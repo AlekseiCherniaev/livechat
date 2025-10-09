@@ -5,6 +5,7 @@ description = "Add your description here"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.118.2",
+    "httpx>=0.28.1",
     "orjson>=3.11.3",
     "pydantic-settings>=2.11.0",
     "structlog>=25.4.0",
@@ -20,6 +21,7 @@ dev = [
     "pytest-asyncio>=1.2.0",
     "pytest-mock>=3.15.1",
     "ruff>=0.14.0",
+    "types-toml>=0.10.8.20240310",
 ]
 
 [tool.mypy]
