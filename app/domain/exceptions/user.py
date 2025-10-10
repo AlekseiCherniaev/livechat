@@ -9,3 +9,8 @@ class UserNotFound(DomainException):
 class UserAlreadyExists(DomainException):
     def __init__(self, message: str = "User already exists") -> None:
         super().__init__(message)
+
+
+class UserInvalidCredentials(DomainException):
+    def __init__(self, message: str = "Invalid username or password") -> None:
+        super().__init__(message)

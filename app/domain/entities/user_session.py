@@ -1,5 +1,6 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
+from uuid import UUID, uuid4
 
 
 @dataclass
@@ -7,5 +8,5 @@ class UserSession:
     user_id: str
     room_id: str
     connected_at: datetime
-    id: str | None = None
+    id: UUID = field(default_factory=uuid4)
     disconnected_at: datetime | None = None

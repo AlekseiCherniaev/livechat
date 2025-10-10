@@ -1,5 +1,6 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
+from uuid import UUID, uuid4
 
 from app.core.constants import EventType
 
@@ -10,5 +11,5 @@ class AnalyticsEvent:
     user_id: str
     room_id: str
     timestamp: int
-    id: str | None = None
+    id: UUID = field(default_factory=uuid4)
     payload: dict[str, Any] | None = None
