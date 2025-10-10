@@ -1,9 +1,11 @@
 from typing import Protocol
+from uuid import UUID
+
 from app.domain.entities.user import User
 
 
 class UserRepository(Protocol):
-    async def get_by_id(self, user_id: str) -> User | None:
+    async def get_by_id(self, user_id: UUID) -> User | None:
         pass
 
     async def get_by_username(self, username: str) -> User | None:
@@ -12,10 +14,10 @@ class UserRepository(Protocol):
     async def save(self, user: User) -> User:
         pass
 
-    async def update_last_active(self, user_id: str) -> None:
+    async def update_last_active(self, user_id: UUID) -> None:
         pass
 
-    async def delete_by_id(self, user_id: str) -> None:
+    async def delete_by_id(self, user_id: UUID) -> None:
         pass
 
     async def exists(self, username: str) -> bool:
