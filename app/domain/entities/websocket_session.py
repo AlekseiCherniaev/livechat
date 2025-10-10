@@ -4,8 +4,10 @@ from uuid import UUID, uuid4
 
 
 @dataclass
-class UserSession:
+class WebSocketSession:
     user_id: str
+    room_id: str
     connected_at: datetime
+    last_ping_at: datetime
     id: UUID = field(default_factory=uuid4)
     disconnected_at: datetime | None = None
