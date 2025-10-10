@@ -2,7 +2,7 @@ from typing import Protocol
 from app.domain.entities.user import User
 
 
-class UserRepositoryPort(Protocol):
+class UserRepository(Protocol):
     async def get_by_id(self, user_id: str) -> User | None:
         pass
 

@@ -4,7 +4,7 @@ from app.domain.entities.message import Message
 from app.domain.entities.notification import Notification
 
 
-class NotificationRepositoryPort(Protocol):
+class NotificationRepository(Protocol):
     async def create(self, notification: Notification) -> None:
         pass
 

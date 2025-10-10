@@ -3,7 +3,7 @@ from app.domain.entities.analytics_event import AnalyticsEvent
 from app.domain.entities.room_stats import RoomStats
 
 
-class AnalyticsRepositoryPort(Protocol):
+class AnalyticsPort(Protocol):
     async def publish_event(self, event: AnalyticsEvent) -> None:
         """Save an analytics event, e.g. user joined room, message sent, etc."""
         pass

@@ -2,7 +2,7 @@ from typing import Protocol
 from app.domain.entities.message import Message
 
 
-class MessageRepositoryPort(Protocol):
+class MessageRepository(Protocol):
     async def save(self, message: Message) -> None:
         pass
 

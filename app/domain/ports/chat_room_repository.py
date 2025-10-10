@@ -2,7 +2,7 @@ from typing import Protocol
 from app.domain.entities.chat_room import ChatRoom
 
 
-class ChatRoomRepositoryPort(Protocol):
+class ChatRoomRepository(Protocol):
     async def save(self, room: ChatRoom) -> ChatRoom:
         pass
 

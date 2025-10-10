@@ -2,7 +2,7 @@ from typing import Protocol
 from app.domain.entities.user_session import UserSession
 
 
-class SessionRepositoryPort(Protocol):
+class SessionRepository(Protocol):
     async def save(self, session: UserSession) -> None:
         pass
 
