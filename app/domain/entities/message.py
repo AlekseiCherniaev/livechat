@@ -6,8 +6,8 @@ from uuid import UUID, uuid4
 
 @dataclass
 class Message:
-    room_id: str
-    user_id: str
+    room_id: UUID
+    user_id: UUID
     content: str
     timestamp: datetime
     id: UUID = field(default_factory=uuid4)

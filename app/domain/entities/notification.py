@@ -9,7 +9,7 @@ from app.core.constants import NotificationType
 
 @dataclass
 class Notification:
-    user_id: str
+    user_id: UUID
     type: NotificationType
     created_at: datetime = field(default_factory=partial(datetime.now, timezone.utc))
     id: UUID = field(default_factory=uuid4)

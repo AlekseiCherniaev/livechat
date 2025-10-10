@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 
 @dataclass
 class UserSession:
-    user_id: str
+    user_id: UUID
     connected_at: datetime
     id: UUID = field(default_factory=uuid4)
     disconnected_at: datetime | None = None
