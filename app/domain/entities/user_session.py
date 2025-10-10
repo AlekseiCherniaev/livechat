@@ -4,8 +4,8 @@ from datetime import datetime
 
 @dataclass
 class UserSession:
-    id: str
     user_id: str
     room_id: str
     connected_at: datetime
+    id: str | None = None
     disconnected_at: datetime | None = None

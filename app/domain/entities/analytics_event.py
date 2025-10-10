@@ -7,9 +7,9 @@ from app.core.constants import EventType
 
 @dataclass
 class AnalyticsEvent:
-    id: str
     event_type: EventType
     user_id: str
     room_id: str
     timestamp: datetime
+    id: str | None = None
     payload: dict[str, Any] | None = None
