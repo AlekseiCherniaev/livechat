@@ -1,0 +1,38 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    env_file:
+      - .env
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    networks:
+      - common_network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1024M
+        reservations:
+          cpus: '0.2'
+          memory: 256M
+    mem_limit: 1024m
+    cpus: 0.5
+    restart: unless-stopped
+
+networks:
+  common_network:
+    name: common_network
+    driver: bridge
+
+volumes:
+  postgres:
+    driver: local
+    name: livechat_postgres_data
