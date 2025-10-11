@@ -2,13 +2,14 @@ from datetime import datetime, timezone
 from functools import partial
 from uuid import UUID, uuid4
 
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field
 
+from app.adapters.db.models.base import SQLModel
 from app.domain.entities.user import User
 
 
 class UserBase(SQLModel):
-    username: str
+    username: str = Field(index=True)
     last_active_at: datetime | None = None
 
 
