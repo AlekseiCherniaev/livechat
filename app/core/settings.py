@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     postgres_password: str = "postgres"
     postgres_db: str = "livechat"
 
+    database_echo: bool = False
+    database_pool_echo: bool = False
+    pool_size: int = 50
+
     @computed_field  # type: ignore
     @property
     def async_postgres_url(self) -> str:
