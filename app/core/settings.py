@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     app_host: str = "127.0.0.1"
     app_port: int = 8000
 
+    mongo_uri: str = "mongodb://localhost:27017"
+    mongo_dbname: str = "chat_app"
+
 
 @lru_cache
 def get_settings() -> Settings:
