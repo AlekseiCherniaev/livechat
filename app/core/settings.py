@@ -1,7 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.core.constants import Environment
@@ -27,32 +26,10 @@ class Settings(BaseSettings):
 
     environment: Environment = Environment.TEST
     log_level: str = "DEBUG"
-    fast_api_debug: bool = False
+    fast_api_debug: bool = True
 
     app_host: str = "127.0.0.1"
     app_port: int = 8000
-
-    postgres_host: str = "127.0.0.1"
-    postgres_port: int = 5432
-    postgres_user: str = "postgres"
-    postgres_password: str = "postgres"
-    postgres_db: str = "livechat"
-
-    database_echo: bool = False
-    database_pool_echo: bool = False
-    pool_size: int = 50
-
-    @computed_field  # type: ignore
-    @property
-    def async_postgres_url(self) -> str:
-        return (
-            f"postgresql+asyncpg://"
-            f"{self.postgres_user}:"
-            f"{self.postgres_password}@"
-            f"{self.postgres_host}:"
-            f"{self.postgres_port}/"
-            f"{self.postgres_db}"
-        )
 
 
 @lru_cache
