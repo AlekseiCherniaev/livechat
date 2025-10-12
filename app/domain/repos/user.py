@@ -22,3 +22,9 @@ class UserRepository(Protocol):
 
     async def exists(self, username: str) -> bool:
         pass
+
+    async def list_users(self, limit: int = 50, offset: int = 0) -> list[User]:
+        pass
+
+    async def find_active_since(self, ts_iso: str) -> list[User]:
+        pass
