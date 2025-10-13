@@ -4,9 +4,15 @@ from typing import AsyncGenerator, Any
 import structlog
 from fastapi import FastAPI
 from fastapi.openapi.docs import get_swagger_ui_html
+from pymongo import AsyncMongoClient
+from redis.asyncio import Redis
 from starlette.responses import HTMLResponse
 from starlette.staticfiles import StaticFiles
 
+from app.adapters.db.mongo.indexes import ensure_indexes
+from app.adapters.security.password_hasher import BcryptPasswordHasher
+from app.api.exception_handler import register_exception_handlers
+from app.api.main_router import get_main_router
 from app.core.logger import prepare_logger
 from app.core.settings import get_settings, Settings
 from app.core.utils import use_handler_name_as_unique_id
@@ -31,8 +37,18 @@ def get_app_config(settings: Settings) -> dict[Any, Any]:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
+    app.state.password_hasher = BcryptPasswordHasher()
+    app.state.mongo_client = AsyncMongoClient(get_settings().mongo_uri)
+    app.state.mongo_db = app.state.mongo_client[get_settings().mongo_dbname]
+    await ensure_indexes(db=app.state.mongo_db)
+    logger.info("MongoDB connected and indexes ensured")
+    app.state.redis = Redis.from_url(
+        get_settings().redis_dsn, encoding="utf-8", decode_responses=True
+    )
     logger.info("Startup completed")
     yield
+    await app.state.mongo_client.close()
+    await app.state.redis.aclose()
     logger.debug("Server stopped")
 
 
@@ -60,5 +76,8 @@ def init_app() -> FastAPI:
     @app.get("/api/health", tags=["Health"])
     async def health_check() -> dict[str, str]:
         return {"status": "ok"}
+
+    app.include_router(get_main_router())
+    register_exception_handlers(app)
 
     return app
