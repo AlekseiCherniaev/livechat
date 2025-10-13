@@ -3,7 +3,7 @@ from fastapi import Request, Depends
 from app.adapters.db.repos.chat_room import MongoChatRoomRepository
 from app.adapters.db.repos.message_repo import CassandraMessageRepository
 from app.adapters.db.repos.notification import MongoNotificationRepository
-from app.adapters.db.repos.session import RedisSessionRepository
+from app.adapters.db.repos.user_session import RedisSessionRepository
 from app.adapters.db.repos.user import MongoUserRepository
 from app.domain.ports.password_hasher import PasswordHasherPort
 from app.domain.repos.chat_room import ChatRoomRepository
