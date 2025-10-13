@@ -32,8 +32,16 @@ class Settings(BaseSettings):
     app_host: str = "127.0.0.1"
     app_port: int = 8000
 
-    mongo_uri: str = "mongodb://localhost:27017"
+    mongo_host: str = "localhost"
+    mongo_port: int = 27017
     mongo_dbname: str = "chat_app"
+    mongo_initdb_root_username: str = "root"
+    mongo_initdb_root_password: str = "root-password"
+
+    @computed_field  # type: ignore
+    @property
+    def mongo_uri(self) -> str:
+        return f"mongodb://{self.mongo_initdb_root_username}:{self.mongo_initdb_root_password}@{self.mongo_host}:{self.mongo_port}?authSource=admin"
 
     redis_host: str = "localhost"
     redis_port: int = 6379
