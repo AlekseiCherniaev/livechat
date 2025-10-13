@@ -22,6 +22,3 @@ class UserSessionRepository(Protocol):
 
     async def delete_by_user_id(self, user_id: UUID) -> None:
         pass
-
-    async def is_online(self, user_id: UUID) -> bool:
-        pass

@@ -62,12 +62,3 @@ class RedisSessionRepository:
         if session_ids:
             await self._redis.delete(*(self._session_key(UUID(s)) for s in session_ids))
         await self._redis.delete(self._user_sessions_key(user_id))
-
-    async def is_online(self, user_id: UUID) -> bool:
-        """User is considered online if at least one active session exists."""
-        session_ids = await self._redis.smembers(self._user_sessions_key(user_id))  # type: ignore[misc]
-        for sid in session_ids:
-            sess = await self.get(UUID(sid))
-            if sess:
-                return True
-        return False
