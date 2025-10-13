@@ -75,7 +75,6 @@ def cassandra_container():
 def cassandra_session(cassandra_container):
     host = cassandra_container["host"]
     port = cassandra_container["port"]
-
     cluster = Cluster([host], port=port)
     session = cluster.connect()
 
@@ -101,7 +100,11 @@ def cassandra_session(cassandra_container):
 
 @fixture
 def override_settings(
-    redis_container, mongo_container, cassandra_container, monkeypatch
+    redis_container,
+    mongo_container,
+    cassandra_container,
+    cassandra_session,
+    monkeypatch,
 ):
     test_settings = Settings(
         environment=Environment.TEST,
@@ -112,6 +115,7 @@ def override_settings(
         redis_host=redis_container["host"],
         redis_port=redis_container["port"],
         cassandra_contact_point=cassandra_container["host"],
+        cassandra_port=cassandra_container["port"],
         cassandra_keyspace="chat_messages",
         redis_db=0,
     )

@@ -20,6 +20,7 @@ class CassandraEngine:
             get_settings().cassandra_keyspace,
             protocol_version=4,
             auth_provider=auth_provider,
+            port=get_settings().cassandra_port,
         )
 
         logger.info("Cassandra connection initialized")

@@ -46,8 +46,8 @@ class Settings(BaseSettings):
     redis_host: str = "localhost"
     redis_port: int = 6379
     redis_db: int = 0
-    user_session_ttl_seconds: int = 60 * 60 * 24
-    web_socket_session_ttl_seconds: int = 60 * 60 * 24
+    user_session_ttl_seconds: int = 60 * 60
+    web_socket_session_ttl_seconds: int = 30
 
     @computed_field  # type: ignore
     @property
@@ -55,6 +55,7 @@ class Settings(BaseSettings):
         return f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db}"
 
     cassandra_contact_point: str = "localhost"
+    cassandra_port: int = 9042
     cassandra_keyspace: str = "chat_messages"
     cassandra_user: str | None = None
     cassandra_password: str | None = None
