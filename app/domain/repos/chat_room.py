@@ -28,3 +28,12 @@ class ChatRoomRepository(Protocol):
 
     async def remove_participant(self, room_id: UUID, user_id: UUID) -> None:
         pass
+
+    async def exists(self, name: str) -> bool:
+        pass
+
+    async def count_participants(self, room_id: UUID) -> int:
+        pass
+
+    async def find_most_active_rooms(self, limit: int = 10) -> list[ChatRoom]:
+        pass
