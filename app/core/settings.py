@@ -46,7 +46,8 @@ class Settings(BaseSettings):
     redis_host: str = "localhost"
     redis_port: int = 6379
     redis_db: int = 0
-    session_ttl_seconds: int = 60 * 60 * 24
+    user_session_ttl_seconds: int = 60 * 60 * 24
+    web_socket_session_ttl_seconds: int = 60 * 60 * 24
 
     @computed_field  # type: ignore
     @property

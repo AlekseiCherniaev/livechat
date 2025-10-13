@@ -3,13 +3,15 @@ from uuid import UUID
 
 import orjson
 from redis.asyncio import Redis
-from app.adapters.db.models.redis_session import dict_to_session, session_to_dict
+from app.adapters.db.models.redis_user_session import dict_to_session, session_to_dict
 from app.core.settings import get_settings
 from app.domain.entities.user_session import UserSession
 
 
 class RedisSessionRepository:
-    def __init__(self, redis: Redis, ttl: int = get_settings().session_ttl_seconds):
+    def __init__(
+        self, redis: Redis, ttl: int = get_settings().user_session_ttl_seconds
+    ):
         self._redis: Redis = redis
         self._ttl = ttl
 

@@ -23,3 +23,4 @@ dmypy.json
 # Coverage files
 .coverage
 .coverage.*
+temp.txt

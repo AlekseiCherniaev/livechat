@@ -22,7 +22,7 @@ def set_session_cookie(response: Response, session_id: str) -> None:
         secure=is_production,
         samesite="lax",
         path="/",
-        max_age=get_settings().session_ttl_seconds,
+        max_age=get_settings().user_session_ttl_seconds,
     )
 
 
