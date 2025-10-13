@@ -1,13 +1,30 @@
 services:
   mongodb:
     image: mongo:7.0
-    container_name: mongodb_chat
+    container_name: mongodb
     ports:
       - "27017:27017"
     environment:
-      - MONGO_INITDB_DATABASE=chat_app
+      MONGO_INITDB_DATABASE: ${MONGO_DBNAME}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
     volumes:
       - mongodb_data:/data/db
+    healthcheck:
+      test: [ "CMD", "mongosh", "--username", "${MONGO_INITDB_ROOT_USERNAME}", "--password", "${MONGO_INITDB_ROOT_PASSWORD}", "--eval", "db.adminCommand('ping')" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+        reservations:
+          cpus: "0.10"
+          memory: 128M
+    mem_limit: 256m
+    cpus: 0.25
     restart: unless-stopped
 
   redis:
@@ -16,8 +33,6 @@ services:
     command: [ "redis-server", "--appendonly", "yes" ]
     ports:
       - "6379:6379"
-    env_file:
-      - .env
     volumes:
       - redis-data:/data
     healthcheck:
