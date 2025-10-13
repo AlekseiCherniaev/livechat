@@ -2,7 +2,11 @@ from fastapi import Request, FastAPI
 from fastapi.responses import JSONResponse
 from starlette import status
 
-from app.domain.exceptions.session import SessionNotFound, NoSessionCookie
+from app.domain.exceptions.session import (
+    SessionNotFound,
+    NoSessionCookie,
+    InvalidSession,
+)
 from app.domain.exceptions.user import (
     UserAlreadyExists,
     UserNotFound,
@@ -14,7 +18,8 @@ EXCEPTION_STATUS_MAP: dict[type[Exception], int] = {
     UserNotFound: status.HTTP_404_NOT_FOUND,
     UserInvalidCredentials: status.HTTP_401_UNAUTHORIZED,
     SessionNotFound: status.HTTP_404_NOT_FOUND,
-    NoSessionCookie: status.HTTP_400_BAD_REQUEST,
+    NoSessionCookie: status.HTTP_401_UNAUTHORIZED,
+    InvalidSession: status.HTTP_401_UNAUTHORIZED,
 }
 
 
