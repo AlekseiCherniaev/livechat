@@ -53,6 +53,11 @@ class Settings(BaseSettings):
     def redis_dsn(self) -> str:
         return f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db}"
 
+    cassandra_user: str = "cassandra"
+    cassandra_password: str = "cassandra-password"
+    cassandra_contact_point: str = "localhost"
+    cassandra_keyspace: str = "chat_messages"
+
 
 @lru_cache
 def get_settings() -> Settings:
