@@ -9,3 +9,8 @@ class SessionNotFound(DomainException):
 class NoSessionCookie(DomainException):
     def __init__(self, message: str = "No session cookie provided") -> None:
         super().__init__(message)
+
+
+class InvalidSession(DomainException):
+    def __init__(self, message: str = "Invalid session cookie format") -> None:
+        super().__init__(message)
