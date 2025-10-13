@@ -12,6 +12,7 @@ from pytest_asyncio import fixture
 from redis.asyncio import Redis
 from starlette.datastructures import State
 from testcontainers.cassandra import CassandraContainer
+from testcontainers.clickhouse import ClickHouseContainer
 from testcontainers.mongodb import MongoDbContainer
 from testcontainers.redis import RedisContainer
 
@@ -98,12 +99,26 @@ def cassandra_session(cassandra_container):
     cluster.shutdown()
 
 
+@fixture(scope="session")
+def clickhouse_container():
+    with ClickHouseContainer("clickhouse/clickhouse-server:24.8") as container:
+        host = container.get_container_host_ip()
+        port = int(container.get_exposed_port(8123))
+        yield {
+            "host": host,
+            "port": int(port),
+            "username": container.username,
+            "password": container.password,
+        }
+
+
 @fixture
 def override_settings(
     redis_container,
     mongo_container,
     cassandra_container,
     cassandra_session,
+    clickhouse_container,
     monkeypatch,
 ):
     test_settings = Settings(
@@ -114,10 +129,14 @@ def override_settings(
         mongo_initdb_root_password=mongo_container["password"],
         redis_host=redis_container["host"],
         redis_port=redis_container["port"],
+        redis_db=0,
         cassandra_contact_point=cassandra_container["host"],
         cassandra_port=cassandra_container["port"],
         cassandra_keyspace="chat_messages",
-        redis_db=0,
+        clickhouse_host=clickhouse_container["host"],
+        clickhouse_tcp_port=clickhouse_container["port"],
+        clickhouse_user=clickhouse_container["username"],
+        clickhouse_password=clickhouse_container["password"],
     )
     monkeypatch.setattr(settings_module, "Settings", lambda: test_settings)
 

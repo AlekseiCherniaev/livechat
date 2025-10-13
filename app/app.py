@@ -4,13 +4,13 @@ from typing import AsyncGenerator, Any
 import structlog
 from fastapi import FastAPI
 from fastapi.openapi.docs import get_swagger_ui_html
-from pymongo import AsyncMongoClient
 from redis.asyncio import Redis
 from starlette.responses import HTMLResponse
 from starlette.staticfiles import StaticFiles
 
+from app.adapters.analytics.clickhouse_client import create_clickhouse_client
 from app.adapters.db.cassandra_engine import CassandraEngine
-from app.adapters.db.mongo.indexes import ensure_indexes
+from app.adapters.db.mongo_client import create_mongo_client
 from app.adapters.security.password_hasher import BcryptPasswordHasher
 from app.api.exception_handler import register_exception_handlers
 from app.api.main_router import get_main_router
@@ -38,20 +38,22 @@ def get_app_config(settings: Settings) -> dict[Any, Any]:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
-    app.state.password_hasher = BcryptPasswordHasher()
-    app.state.mongo_client = AsyncMongoClient(get_settings().mongo_uri)
+    app.state.bcrypt_password_hasher = BcryptPasswordHasher()
+    app.state.mongo_client = await create_mongo_client()
     app.state.mongo_db = app.state.mongo_client[get_settings().mongo_dbname]
-    await ensure_indexes(db=app.state.mongo_db)
-    logger.info("MongoDB connected and indexes ensured")
     app.state.redis = Redis.from_url(
         get_settings().redis_dsn, encoding="utf-8", decode_responses=True
     )
     app.state.cassandra_engine = CassandraEngine()
+    app.state.clickhouse = await create_clickhouse_client()
+
     logger.info("Startup completed")
     yield
     await app.state.mongo_client.close()
     await app.state.redis.aclose()
     app.state.cassandra_engine.shutdown()
+    await app.state.clickhouse.close()
+
     logger.debug("Server stopped")
 
 

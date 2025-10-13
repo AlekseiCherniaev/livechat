@@ -11,9 +11,6 @@ class AnalyticsPort(Protocol):
     async def get_room_stats(self, room_id: str) -> RoomStats | None:
         pass
 
-    async def update_room_stats(self, stats: RoomStats) -> None:
-        pass
-
     async def get_user_activity(self, user_id: str) -> dict[str, int] | None:
         """For example {'messages': 42, 'rooms_joined': 3}"""
         pass

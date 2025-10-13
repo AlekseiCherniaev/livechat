@@ -1,3 +1,4 @@
+from clickhouse_connect.driver.asyncclient import AsyncClient
 from fastapi import Request, Depends
 
 from app.adapters.db.repos.chat_room import MongoChatRoomRepository
@@ -14,8 +15,12 @@ from app.domain.repos.user import UserRepository
 from app.domain.services.user_service import UserService
 
 
-def get_password_hasher(request: Request) -> PasswordHasherPort:
-    return request.app.state.password_hasher  # type: ignore
+def get_bcrypt_password_hasher(request: Request) -> PasswordHasherPort:
+    return request.app.state.bcrypt_password_hasher  # type: ignore
+
+
+def get_clickhouse_client(request: Request) -> AsyncClient:
+    return request.app.state.clickhouse  # type: ignore
 
 
 def get_user_repo(request: Request) -> UserRepository:
@@ -41,7 +46,7 @@ def get_message_repo() -> MessageRepository:
 def get_user_service(
     user_repo: UserRepository = Depends(get_user_repo),
     session_repo: UserSessionRepository = Depends(get_session_repo),
-    password_hasher: PasswordHasherPort = Depends(get_password_hasher),
+    password_hasher: PasswordHasherPort = Depends(get_bcrypt_password_hasher),
 ) -> UserService:
     return UserService(
         user_repo=user_repo,
