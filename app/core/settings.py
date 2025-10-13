@@ -61,8 +61,8 @@ class Settings(BaseSettings):
     cassandra_password: str | None = None
 
     clickhouse_host: str = "localhost"
-    clickhouse_tcp_port: int = 9000
-    clickhouse_http_port: int = 8123
+    clickhouse_tcp_port: int = 8123
+    clickhouse_http_port: int = 9000
     clickhouse_user: str = "clickhouse"
     clickhouse_password: str = "clickhouse-password"
     clickhouse_db: str = "analytics"
