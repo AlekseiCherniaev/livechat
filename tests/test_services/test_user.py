@@ -6,14 +6,14 @@ import pytest
 
 from app.domain.entities.user import User
 from app.domain.entities.user_session import UserSession
-from app.domain.exceptions.session import SessionNotFound, InvalidSession
+from app.domain.exceptions.user_session import SessionNotFound, InvalidSession
 from app.domain.exceptions.user import (
     UserAlreadyExists,
     UserInvalidCredentials,
     UserNotFound,
 )
 from app.domain.ports.password_hasher import PasswordHasherPort
-from app.domain.repos.session import SessionRepository
+from app.domain.repos.user_session import UserSessionRepository
 from app.domain.repos.user import UserRepository
 from app.domain.services.user_service import UserService
 
@@ -26,8 +26,8 @@ class TestUserService:
         return repo
 
     @pytest.fixture
-    def session_repo(self) -> SessionRepository:
-        repo = AsyncMock(spec=SessionRepository)
+    def session_repo(self) -> UserSessionRepository:
+        repo = AsyncMock(spec=UserSessionRepository)
         return repo
 
     @pytest.fixture

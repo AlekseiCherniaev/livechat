@@ -2,7 +2,7 @@ from fastapi import Request, FastAPI
 from fastapi.responses import JSONResponse
 from starlette import status
 
-from app.domain.exceptions.session import (
+from app.domain.exceptions.user_session import (
     SessionNotFound,
     NoSessionCookie,
     InvalidSession,

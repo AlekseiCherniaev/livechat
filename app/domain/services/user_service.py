@@ -5,14 +5,14 @@ import structlog
 
 from app.domain.entities.user import User
 from app.domain.entities.user_session import UserSession
-from app.domain.exceptions.session import SessionNotFound, InvalidSession
+from app.domain.exceptions.user_session import SessionNotFound, InvalidSession
 from app.domain.exceptions.user import (
     UserAlreadyExists,
     UserInvalidCredentials,
     UserNotFound,
 )
 from app.domain.ports.password_hasher import PasswordHasherPort
-from app.domain.repos.session import SessionRepository
+from app.domain.repos.user_session import UserSessionRepository
 from app.domain.repos.user import UserRepository
 
 logger = structlog.get_logger(__name__)
@@ -22,7 +22,7 @@ class UserService:
     def __init__(
         self,
         user_repo: UserRepository,
-        session_repo: SessionRepository,
+        session_repo: UserSessionRepository,
         password_hasher_port: PasswordHasherPort,
     ) -> None:
         self._user_repo = user_repo

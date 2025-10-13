@@ -4,7 +4,7 @@ from uuid import UUID
 from app.domain.entities.user_session import UserSession
 
 
-class SessionRepository(Protocol):
+class UserSessionRepository(Protocol):
     async def save(self, session: UserSession) -> None:
         pass
 
