@@ -8,6 +8,7 @@ dependencies = [
     "fastapi>=0.118.2",
     "httpx>=0.28.1",
     "orjson>=3.11.3",
+    "passlib>=1.7.4",
     "pydantic-settings>=2.11.0",
     "pymongo>=4.15.3",
     "python-dateutil>=2.9.0.post0",
@@ -25,6 +26,7 @@ dev = [
     "pytest-asyncio>=1.2.0",
     "pytest-mock>=3.15.1",
     "ruff>=0.14.0",
+    "types-passlib>=1.7.7.20250602",
     "types-python-dateutil>=2.9.0.20251008",
     "types-toml>=0.10.8.20240310",
 ]
