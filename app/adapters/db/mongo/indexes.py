@@ -8,3 +8,6 @@ async def ensure_indexes(db: AsyncDatabase[Any]) -> None:
     users = db["users"]
     await users.create_index([("username", ASCENDING)], unique=True)
     await users.create_index([("last_active_at", ASCENDING)])
+    rooms = db["chat_rooms"]
+    await rooms.create_index([("name", ASCENDING)], unique=True)
+    await rooms.create_index([("updated_at", ASCENDING)])

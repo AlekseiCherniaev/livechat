@@ -10,4 +10,4 @@ class ChatRoom:
     created_at: datetime = field(default_factory=partial(datetime.now, timezone.utc))
     updated_at: datetime = field(default_factory=partial(datetime.now, timezone.utc))
     id: UUID = field(default_factory=uuid4)
-    participants: list[str] = field(default_factory=list)
+    participants: list[UUID] = field(default_factory=list)
