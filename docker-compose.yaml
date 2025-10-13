@@ -9,6 +9,8 @@ services:
     networks:
       - common_network
     depends_on:
+      clickhouse:
+        condition: service_healthy
       mongodb:
         condition: service_healthy
       redis:
@@ -124,6 +126,39 @@ services:
       cassandra:
         condition: service_healthy
 
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8.4
+    container_name: clickhouse
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    environment:
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    networks:
+      - common_network
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -sSf http://localhost:8123/ping || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+    mem_limit: 512m
+    cpus: 0.5
+    restart: unless-stopped
+
+
 networks:
   common_network:
     name: common_network
@@ -133,3 +168,4 @@ volumes:
   redis-data:
   mongodb_data:
   cassandra_data:
+  clickhouse_data:
