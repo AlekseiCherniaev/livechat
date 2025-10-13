@@ -1,4 +1,28 @@
 services:
+  api:
+    build: .
+    container_name: api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    networks:
+      - common_network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      cassandra:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/api/health\")' || exit 1" ]
+      interval: 20s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
   mongodb:
     image: mongo:7.0
     container_name: mongodb
@@ -10,6 +34,8 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
     volumes:
       - mongodb_data:/data/db
+    networks:
+      - common_network
     healthcheck:
       test: [ "CMD", "mongosh", "--username", "${MONGO_INITDB_ROOT_USERNAME}", "--password", "${MONGO_INITDB_ROOT_PASSWORD}", "--eval", "db.adminCommand('ping')" ]
       interval: 30s
@@ -35,6 +61,8 @@ services:
       - "6379:6379"
     volumes:
       - redis-data:/data
+    networks:
+      - common_network
     healthcheck:
       test: [ "CMD", "redis-cli", "ping" ]
       interval: 30s
@@ -52,6 +80,44 @@ services:
     cpus: 0.1
     restart: unless-stopped
 
+  cassandra:
+    image: cassandra:4.1
+    container_name: cassandra
+    ports:
+      - "9042:9042"
+    environment:
+      CASSANDRA_CLUSTER_NAME: "chat-cluster"
+      CASSANDRA_USER: ${CASSANDRA_USER}
+      CASSANDRA_PASSWORD: ${CASSANDRA_PASSWORD}
+      MAX_HEAP_SIZE: 512M
+      HEAP_NEWSIZE: 100M
+    volumes:
+      - cassandra_data:/var/lib/cassandra
+    networks:
+      - common_network
+    healthcheck:
+      test: [ "CMD", "cqlsh", "-u", "${CASSANDRA_USER}", "-p", "${CASSANDRA_PASSWORD}", "-e", "describe keyspaces;" ]
+      interval: 40s
+      timeout: 10s
+      retries: 6
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1024m
+        reservations:
+          cpus: "0.5"
+          memory: 256M
+    mem_limit: 1024m
+    cpus: 1.0
+    restart: unless-stopped
+
+networks:
+  common_network:
+    name: common_network
+    driver: bridge
+
 volumes:
   redis-data:
   mongodb_data:
+  cassandra_data:
