@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS messages_user_id_idx ON chat_messages.messages(user_id);
