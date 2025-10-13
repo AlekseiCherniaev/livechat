@@ -2,15 +2,24 @@ from typing import AsyncGenerator
 
 from asgi_lifespan import LifespanManager
 from asgi_lifespan._types import ASGIApp
+from cassandra.cluster import Cluster
+from cassandra.cqlengine import connection
+from cassandra.cqlengine.management import sync_table
 from fastapi import FastAPI
 from httpx import AsyncClient, ASGITransport
 from pymongo import AsyncMongoClient
 from pytest_asyncio import fixture
 from redis.asyncio import Redis
 from starlette.datastructures import State
+from testcontainers.cassandra import CassandraContainer
 from testcontainers.mongodb import MongoDbContainer
 from testcontainers.redis import RedisContainer
 
+from app.adapters.db.models.cassandra_message import (
+    MessageByUserModel,
+    MessageModel,
+    MessageByIdModel,
+)
 from app.app import init_app
 from app.core import settings as settings_module
 from app.core.constants import Environment
@@ -54,8 +63,46 @@ async def redis_client(redis_container):
     await client.aclose()
 
 
+@fixture(scope="session")
+def cassandra_container():
+    with CassandraContainer("cassandra:4.1") as container:
+        host = container.get_container_host_ip()
+        port = container.get_exposed_port(9042)
+        yield {"host": host, "port": int(port)}
+
+
+@fixture(scope="function")
+def cassandra_session(cassandra_container):
+    host = cassandra_container["host"]
+    port = cassandra_container["port"]
+
+    cluster = Cluster([host], port=port)
+    session = cluster.connect()
+
+    keyspace = "chat_messages"
+    session.execute(
+        f"""
+        CREATE KEYSPACE IF NOT EXISTS {keyspace}
+        WITH replication = {{ 'class': 'SimpleStrategy', 'replication_factor': '1' }};
+        """
+    )
+    session.set_keyspace(keyspace)
+    connection.set_session(session)
+
+    sync_table(MessageModel)
+    sync_table(MessageByUserModel)
+    sync_table(MessageByIdModel)
+
+    yield session
+
+    session.shutdown()
+    cluster.shutdown()
+
+
 @fixture
-def override_settings(redis_container, mongo_container, monkeypatch):
+def override_settings(
+    redis_container, mongo_container, cassandra_container, monkeypatch
+):
     test_settings = Settings(
         environment=Environment.TEST,
         mongo_host=mongo_container["host"],
@@ -64,6 +111,8 @@ def override_settings(redis_container, mongo_container, monkeypatch):
         mongo_initdb_root_password=mongo_container["password"],
         redis_host=redis_container["host"],
         redis_port=redis_container["port"],
+        cassandra_contact_point=cassandra_container["host"],
+        cassandra_keyspace="chat_messages",
         redis_db=0,
     )
     monkeypatch.setattr(settings_module, "Settings", lambda: test_settings)

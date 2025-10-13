@@ -55,8 +55,8 @@ class Settings(BaseSettings):
 
     cassandra_contact_point: str = "localhost"
     cassandra_keyspace: str = "chat_messages"
-    cassandra_user: str = "cassandra"
-    cassandra_password: str = "cassandra-password"
+    cassandra_user: str | None = None
+    cassandra_password: str | None = None
 
 
 @lru_cache
