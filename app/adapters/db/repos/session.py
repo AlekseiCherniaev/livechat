@@ -66,6 +66,6 @@ class RedisSessionRepository:
         session_ids = await self._redis.smembers(self._user_sessions_key(user_id))  # type: ignore[misc]
         for sid in session_ids:
             sess = await self.get(UUID(sid))
-            if sess and not sess.disconnected_at:
+            if sess:
                 return True
         return False

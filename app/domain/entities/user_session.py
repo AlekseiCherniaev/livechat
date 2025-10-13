@@ -8,4 +8,3 @@ class UserSession:
     user_id: UUID
     connected_at: datetime
     id: UUID = field(default_factory=uuid4)
-    disconnected_at: datetime | None = None

@@ -1,8 +1,7 @@
 from passlib.context import CryptContext
-from app.domain.ports.password_hasher import PasswordHasherPort
 
 
-class BcryptPasswordHasher(PasswordHasherPort):
+class BcryptPasswordHasher:
     def __init__(self) -> None:
         self._pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
