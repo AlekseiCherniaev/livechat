@@ -28,3 +28,6 @@ class NotificationRepository(Protocol):
 
     async def count_unread(self, user_id: UUID) -> int:
         pass
+
+    async def mark_all_as_read(self, user_id: UUID) -> None:
+        pass

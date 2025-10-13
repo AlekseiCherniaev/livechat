@@ -11,3 +11,7 @@ async def ensure_indexes(db: AsyncDatabase[Any]) -> None:
     rooms = db["chat_rooms"]
     await rooms.create_index([("name", ASCENDING)], unique=True)
     await rooms.create_index([("updated_at", ASCENDING)])
+    notifications = db["notifications"]
+    await notifications.create_index([("user_id", ASCENDING)])
+    await notifications.create_index([("created_at", ASCENDING)])
+    await notifications.create_index([("read", ASCENDING)])

@@ -11,7 +11,7 @@ from app.adapters.db.models.mongo_chat import (
 from app.domain.entities.chat_room import ChatRoom
 
 
-class MongoChatRoom:
+class MongoChatRoomRepository:
     def __init__(self, db: AsyncDatabase[Any]) -> None:
         self._col = db["chat_rooms"]
 

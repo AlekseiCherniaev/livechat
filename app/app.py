@@ -9,6 +9,7 @@ from redis.asyncio import Redis
 from starlette.responses import HTMLResponse
 from starlette.staticfiles import StaticFiles
 
+from app.adapters.db.cassandra_engine import CassandraEngine
 from app.adapters.db.mongo.indexes import ensure_indexes
 from app.adapters.security.password_hasher import BcryptPasswordHasher
 from app.api.exception_handler import register_exception_handlers
@@ -45,10 +46,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
     app.state.redis = Redis.from_url(
         get_settings().redis_dsn, encoding="utf-8", decode_responses=True
     )
+    app.state.cassandra_engine = CassandraEngine()
     logger.info("Startup completed")
     yield
     await app.state.mongo_client.close()
     await app.state.redis.aclose()
+    app.state.cassandra_engine.shutdown()
     logger.debug("Server stopped")
 
 
