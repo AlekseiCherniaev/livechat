@@ -1,9 +1,7 @@
 import structlog
 from cassandra.auth import PlainTextAuthProvider
 from cassandra.cqlengine import connection
-from cassandra.cqlengine.management import sync_table, create_keyspace_simple
 
-from app.adapters.db.models.cassandra_message import MessageModel
 from app.core.settings import get_settings
 
 logger = structlog.getLogger(__name__)
@@ -24,10 +22,7 @@ class CassandraEngine:
             auth_provider=auth_provider,
         )
 
-        create_keyspace_simple(get_settings().cassandra_keyspace, replication_factor=1)
-        sync_table(MessageModel)
-
-        logger.info("Cassandra connected and MessageModel synchronized")
+        logger.info("Cassandra connection initialized")
 
     @staticmethod
     def shutdown() -> None:
