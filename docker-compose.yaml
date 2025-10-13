@@ -13,8 +13,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      cassandra:
-        condition: service_healthy
+      cassandra-migrations:
+        condition: service_completed_successfully
     healthcheck:
       test: [ "CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/api/health\")' || exit 1" ]
       interval: 20s
@@ -111,6 +111,18 @@ services:
     mem_limit: 1024m
     cpus: 1.0
     restart: unless-stopped
+
+  cassandra-migrations:
+    build: .
+    container_name: cassandra_migrations
+    command: [ "/app/.venv/bin/python", "/app/cassandra_migrations/run_migrations.py" ]
+    env_file:
+      - .env
+    networks:
+      - common_network
+    depends_on:
+      cassandra:
+        condition: service_healthy
 
 networks:
   common_network:
