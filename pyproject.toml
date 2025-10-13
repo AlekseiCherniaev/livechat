@@ -36,6 +36,7 @@ dev = [
 
 [tool.mypy]
 exclude = 'tests/'
+ignore_missing_imports = true
 
 [tool.coverage.run]
 source = ["src"]
