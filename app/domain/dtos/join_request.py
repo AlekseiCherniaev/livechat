@@ -1,0 +1,12 @@
+from dataclasses import dataclass
+from uuid import UUID
+
+from app.core.constants import JoinRequestStatus
+
+
+@dataclass
+class JoinRequestCreateDTO:
+    message: str | None
+    user_id: UUID
+    room_id: UUID
+    status: JoinRequestStatus = JoinRequestStatus.PENDING
