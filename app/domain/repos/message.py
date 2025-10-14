@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
@@ -5,23 +6,18 @@ from app.domain.entities.message import Message
 
 
 class MessageRepository(Protocol):
-    async def save(self, message: Message) -> None:
-        pass
+    async def save(self, message: Message) -> None: ...
 
-    async def get_recent_by_room(self, room_id: UUID, limit: int) -> list[Message]:
-        pass
+    async def get_recent_by_room(self, room_id: UUID, limit: int) -> list[Message]: ...
 
-    async def get_by_id(self, message_id: UUID) -> Message | None:
-        pass
+    async def get_by_id(self, message_id: UUID) -> Message | None: ...
 
-    async def delete_by_id(self, message_id: UUID) -> None:
-        pass
+    async def get_since(self, room_id: UUID, since: datetime) -> list[Message]: ...
 
-    async def count_by_room(self, room_id: UUID) -> int:
-        pass
+    async def delete_by_id(self, message_id: UUID) -> None: ...
 
-    async def update_content(self, message_id: UUID, new_content: str) -> None:
-        pass
+    async def count_by_room(self, room_id: UUID) -> int: ...
 
-    async def list_by_user(self, user_id: UUID, limit: int = 50) -> list[Message]:
-        pass
+    async def update_content(self, message_id: UUID, new_content: str) -> None: ...
+
+    async def list_by_user(self, user_id: UUID, limit: int = 50) -> list[Message]: ...
