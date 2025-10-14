@@ -1,11 +1,13 @@
 from clickhouse_connect.driver.asyncclient import AsyncClient
 from fastapi import Request, Depends
 
+from app.adapters.analytics.analytics import ClickHouseAnalyticsRepository
 from app.adapters.db.repos.chat_room import MongoChatRoomRepository
 from app.adapters.db.repos.message_repo import CassandraMessageRepository
 from app.adapters.db.repos.notification import MongoNotificationRepository
 from app.adapters.db.repos.user_session import RedisSessionRepository
 from app.adapters.db.repos.user import MongoUserRepository
+from app.domain.ports.analytics import AnalyticsPort
 from app.domain.ports.password_hasher import PasswordHasherPort
 from app.domain.repos.chat_room import ChatRoomRepository
 from app.domain.repos.message import MessageRepository
@@ -21,6 +23,12 @@ def get_bcrypt_password_hasher(request: Request) -> PasswordHasherPort:
 
 def get_clickhouse_client(request: Request) -> AsyncClient:
     return request.app.state.clickhouse  # type: ignore
+
+
+def get_analytics(
+    clickhouse_client: AsyncClient = Depends(get_clickhouse_client),
+) -> AnalyticsPort:
+    return ClickHouseAnalyticsRepository(client=clickhouse_client)
 
 
 def get_user_repo(request: Request) -> UserRepository:
