@@ -12,6 +12,7 @@ class OutboxEvent:
     status: OutboxStatus
     payload: dict[str, Any]
     sent: bool = False
+    dedup_key: str | None = None
     retries: int = 0
     max_retries: int = 5
     sent_at: datetime | None = None
