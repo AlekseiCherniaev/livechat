@@ -2,21 +2,14 @@ from typing import Protocol, Any
 
 
 class CachePort(Protocol):
-    async def get(self, key: str) -> Any | None:
-        pass
+    async def get(self, key: str) -> Any | None: ...
 
-    async def set(self, key: str, value: Any, ttl: int = 60) -> None:
-        pass
+    async def set(self, key: str, value: Any, ttl: int = 60) -> None: ...
 
-    async def delete(self, key: str) -> None:
-        pass
+    async def delete(self, key: str) -> None: ...
 
-    async def exists(self, key: str) -> bool:
-        pass
+    async def exists(self, key: str) -> bool: ...
 
-    async def incr(self, key: str, amount: int = 1) -> int:
-        pass
+    async def incr(self, key: str, amount: int = 1) -> int: ...
 
-    async def clear_prefix(self, prefix: str) -> None:
-        """Clear all keys that start with the given prefix."""
-        pass
+    async def clear_prefix(self, prefix: str) -> None: ...
