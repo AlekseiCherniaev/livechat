@@ -18,23 +18,32 @@ async def ensure_tables(client: AsyncClient) -> None:
         event_type String,
         user_id UUID,
         room_id UUID,
-        timestamp Int64,
+        timestamp DateTime64(3),
         payload String
     ) ENGINE = MergeTree()
-    PARTITION BY toYYYYMM(toDateTime(timestamp))
+    PARTITION BY toYYYYMM(timestamp)
     ORDER BY (room_id, timestamp)
     """)
 
 
 async def create_clickhouse_client() -> AsyncClient:
-    client = await clickhouse_connect.get_async_client(
+    tmp_client = await clickhouse_connect.get_async_client(
         host=get_settings().clickhouse_host,
         port=get_settings().clickhouse_tcp_port,
         username=get_settings().clickhouse_user,
         password=get_settings().clickhouse_password,
         database="default",
     )
-    await ensure_database(client, get_settings().clickhouse_db)
+    await ensure_database(tmp_client, get_settings().clickhouse_db)
+    await tmp_client.close()  # type: ignore
+
+    client = await clickhouse_connect.get_async_client(
+        host=get_settings().clickhouse_host,
+        port=get_settings().clickhouse_tcp_port,
+        username=get_settings().clickhouse_user,
+        password=get_settings().clickhouse_password,
+        database=get_settings().clickhouse_db,
+    )
     await ensure_tables(client=client)
     logger.info("ClickHouse connected and table ensured")
     return client
