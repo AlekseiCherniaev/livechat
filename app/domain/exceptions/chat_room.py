@@ -9,3 +9,8 @@ class ChatRoomNotFound(DomainException):
 class ChatRoomAlreadyExists(DomainException):
     def __init__(self, message: str = "Chat room already exists") -> None:
         super().__init__(message)
+
+
+class NoChangesDetected(DomainException):
+    def __init__(self, message: str = "Nothing to change in chat room ") -> None:
+        super().__init__(message)
