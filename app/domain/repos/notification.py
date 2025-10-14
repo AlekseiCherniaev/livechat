@@ -6,28 +6,24 @@ from app.domain.entities.notification import Notification
 
 
 class NotificationRepository(Protocol):
-    async def create(self, notification: Notification) -> None:
-        pass
+    async def save(self, notification: Notification) -> None: ...
 
     async def create_notifications_for_room(
         self, room_id: UUID, message: Message
-    ) -> None:
-        """Notify all participants in the room except the sender."""
-        pass
+    ) -> None: ...
 
     async def get_user_notifications(
         self, user_id: UUID, unread_only: bool = False
-    ) -> list[Notification]:
-        pass
+    ) -> list[Notification]: ...
 
-    async def mark_as_read(self, notification_id: UUID) -> None:
-        pass
+    async def list_recent(
+        self, user_id: UUID, limit: int = 20
+    ) -> list[Notification]: ...
 
-    async def delete_by_user(self, user_id: UUID) -> None:
-        pass
+    async def mark_as_read(self, notification_id: UUID) -> None: ...
 
-    async def count_unread(self, user_id: UUID) -> int:
-        pass
+    async def delete_by_user(self, user_id: UUID) -> None: ...
 
-    async def mark_all_as_read(self, user_id: UUID) -> None:
-        pass
+    async def count_unread(self, user_id: UUID) -> int: ...
+
+    async def mark_all_as_read(self, user_id: UUID) -> None: ...
