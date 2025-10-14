@@ -6,16 +6,18 @@ from app.domain.entities.room_stats import RoomStats
 
 
 class AnalyticsPort(Protocol):
-    async def publish_event(self, event: AnalyticsEvent) -> None:
-        """Save an analytics event, e.g. user joined room, message sent, etc."""
-        pass
+    async def publish_event(self, event: AnalyticsEvent) -> None: ...
 
-    async def get_room_stats(self, room_id: UUID) -> RoomStats | None:
-        pass
+    async def get_room_stats(self, room_id: UUID) -> RoomStats | None: ...
 
-    async def get_user_activity(self, user_id: UUID) -> dict[str, int] | None:
-        """For example {'messages': 42, 'rooms_joined': 3}"""
-        pass
+    async def get_user_activity(self, user_id: UUID) -> dict[str, int] | None: ...
 
-    async def top_active_rooms(self, limit: int = 10) -> list[RoomStats]:
-        pass
+    async def top_active_rooms(self, limit: int = 10) -> list[RoomStats]: ...
+
+    async def messages_per_minute(
+        self, room_id: UUID, since_minutes: int = 60
+    ) -> int: ...
+
+    async def average_message_length(self, room_id: UUID) -> float: ...
+
+    async def active_users_count(self, room_id: UUID) -> int: ...
