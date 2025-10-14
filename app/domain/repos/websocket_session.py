@@ -4,20 +4,20 @@ from app.domain.entities.websocket_session import WebSocketSession
 
 
 class WebSocketSessionRepository(Protocol):
-    async def save(self, session: WebSocketSession) -> None:
-        pass
+    async def save(self, session: WebSocketSession) -> None: ...
 
-    async def get(self, session_id: UUID) -> WebSocketSession | None:
-        pass
+    async def get(self, session_id: UUID) -> WebSocketSession | None: ...
 
-    async def list_by_user_id(self, user_id: UUID) -> list[WebSocketSession]:
-        pass
+    async def list_by_user_id(self, user_id: UUID) -> list[WebSocketSession]: ...
 
-    async def delete_by_id(self, session_id: UUID) -> None:
-        pass
+    async def list_by_room(self, room_id: UUID) -> list[WebSocketSession]: ...
 
-    async def delete_by_user_id(self, user_id: UUID) -> None:
-        pass
+    async def delete_by_id(self, session_id: UUID) -> None: ...
 
-    async def is_online(self, user_id: UUID) -> bool:
-        pass
+    async def delete_by_user_id(self, user_id: UUID) -> None: ...
+
+    async def is_online(self, user_id: UUID) -> bool: ...
+
+    async def count_by_room(self, room_id: UUID) -> int: ...
+
+    async def update_last_ping(self, session_id: UUID) -> None: ...
