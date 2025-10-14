@@ -1,22 +1,25 @@
 from typing import Protocol
+from uuid import UUID
+
+from app.domain.entities.message import Message
 from app.domain.entities.websocket_session import WebSocketSession
 
 
 class ConnectionPort(Protocol):
-    async def connect(self, session: WebSocketSession) -> None:
-        pass
+    async def connect(self, session: WebSocketSession) -> None: ...
 
-    async def disconnect(self, session_id: str) -> None:
-        pass
+    async def disconnect(self, session_id: str) -> None: ...
 
-    async def update_ping(self, session_id: str) -> None:
-        pass
+    async def broadcast_message(self, room_id: str, message: Message) -> None: ...
 
-    async def get_active_sessions(self, room_id: str) -> list[WebSocketSession]:
-        pass
+    async def disconnect_user_from_room(self, user_id: str, room_id: str) -> None: ...
 
-    async def is_user_online(self, user_id: str) -> bool:
-        pass
+    async def list_users_in_room(self, room_id: str) -> list[UUID]: ...
 
-    async def get_rooms_for_user(self, user_id: str) -> list[str]:
-        pass
+    async def update_ping(self, session_id: str) -> None: ...
+
+    async def get_active_sessions(self, room_id: str) -> list[WebSocketSession]: ...
+
+    async def is_user_online(self, user_id: str) -> bool: ...
+
+    async def get_rooms_for_user(self, user_id: str) -> list[str]: ...
