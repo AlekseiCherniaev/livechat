@@ -1,0 +1,16 @@
+from typing import Protocol
+from uuid import UUID
+
+from app.domain.entities.room_membership import RoomMembership
+
+
+class RoomMembershipRepository(Protocol):
+    async def save(self, room_membership: RoomMembership) -> RoomMembership: ...
+
+    async def delete(self, room_id: UUID, user_id: UUID) -> None: ...
+
+    async def list_users(self, room_id: UUID) -> list[UUID]: ...
+
+    async def list_rooms_for_user(self, user_id: UUID) -> list[UUID]: ...
+
+    async def exists(self, room_id: UUID, user_id: UUID) -> bool: ...
