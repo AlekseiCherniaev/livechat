@@ -12,7 +12,6 @@ class AnalyticsEvent:
     event_type: AnalyticsEventType
     user_id: UUID
     room_id: UUID
-    occurred_at: datetime
     payload: dict[str, Any] | None = None
     created_at: datetime = field(default_factory=partial(datetime.now, timezone.utc))
     id: UUID = field(default_factory=uuid4)
