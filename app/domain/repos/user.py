@@ -5,26 +5,18 @@ from app.domain.entities.user import User
 
 
 class UserRepository(Protocol):
-    async def get_by_id(self, user_id: UUID) -> User | None:
-        pass
+    async def save(self, user: User) -> User: ...
 
-    async def get_by_username(self, username: str) -> User | None:
-        pass
+    async def get_by_id(self, user_id: UUID) -> User | None: ...
 
-    async def save(self, user: User) -> User:
-        pass
+    async def get_by_username(self, username: str) -> User | None: ...
 
-    async def update_last_active(self, user_id: UUID) -> None:
-        pass
+    async def update_last_active(self, user_id: UUID) -> None: ...
 
-    async def delete_by_id(self, user_id: UUID) -> None:
-        pass
+    async def delete_by_id(self, user_id: UUID) -> None: ...
 
-    async def exists(self, username: str) -> bool:
-        pass
+    async def exists(self, username: str) -> bool: ...
 
-    async def list_users(self, limit: int = 50, offset: int = 0) -> list[User]:
-        pass
+    async def list_users(self, limit: int = 50, offset: int = 0) -> list[User]: ...
 
-    async def find_active_since(self, ts_iso: str) -> list[User]:
-        pass
+    async def find_active_since(self, ts_iso: str) -> list[User]: ...
