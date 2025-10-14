@@ -80,19 +80,19 @@ class ChatRoomService:
         if not await self._user_repo.get_by_id(room_data.created_by):
             raise UserNotFound
 
-        room = ChatRoom(
-            name=room_data.name,
-            description=room_data.description,
-            is_public=room_data.is_public,
-            created_by=room_data.created_by,
-            participants_count=0,
-        )
-        room = await self._room_repo.save(room=room)
+        async def _txn():
+            _room = ChatRoom(
+                name=room_data.name,
+                description=room_data.description,
+                is_public=room_data.is_public,
+                created_by=room_data.created_by,
+                participants_count=0,
+            )
+            _room = await self._room_repo.save(room=_room)
+            await self._add_participant(_room.id, room_data.created_by, RoomRole.OWNER)
+            return _room
 
-        await self._add_participant(
-            room_id=room.id, user_id=room_data.created_by, role=RoomRole.OWNER
-        )
-        # TODO use UOW or simple rollback (await self._join_repo.delete_by_id(request.id)
+        room = await self._tm.run_in_transaction(_txn)
         logger.bind(room_id=room.id).info("Room created")
 
         await self._analytics.publish_event(
@@ -183,10 +183,16 @@ class ChatRoomService:
         if not room:
             raise ChatRoomNotFound
 
+        user = await self._user_repo.get_by_id(user_id=join_request_data.user_id)
+        if user is None:
+            raise UserNotFound
+
         if room.is_public:
-            await self._add_participant(
-                room_id=join_request_data.room_id, user_id=join_request_data.user_id
-            )
+
+            async def _txn():
+                await self._add_participant(room.id, join_request_data.user_id)
+
+            await self._tm.run_in_transaction(_txn)
             logger.bind(room_id=room.id, user_id=join_request_data.user_id).info(
                 "User joined public room"
             )
@@ -214,15 +220,10 @@ class ChatRoomService:
             message=join_request_data.message,
         )
         await self._join_repo.save(request=request)
-        # TODO handle rollback here
         logger.bind(
             room_id=join_request_data.room_id, user_id=join_request_data.user_id
         ).info("Join request created")
 
-        user = await self._user_repo.get_by_id(user_id=join_request_data.user_id)
-        if user is None:
-            raise UserNotFound
-        # TODO handle rollback here
         await self._notifier.send(
             Notification(
                 user_id=room.created_by,
@@ -234,7 +235,7 @@ class ChatRoomService:
                 source_id=join_request_data.user_id,
             )
         )
-        # TODO handle rollback here
+
         await self._analytics.publish_event(
             AnalyticsEvent(
                 event_type=AnalyticsEventType.JOIN_REQUEST_CREATED,
@@ -254,15 +255,26 @@ class ChatRoomService:
         if room is None:
             raise ChatRoomNotFound
 
-        if accept:
-            await self._add_participant(request.room_id, request.user_id)
-            request.status = JoinRequestStatus.ACCEPTED
-            notif_type = NotificationType.JOIN_REQUEST_ACCEPTED
-            event_type = AnalyticsEventType.JOIN_REQUEST_ACCEPTED
-        else:
-            request.status = JoinRequestStatus.REJECTED
-            notif_type = NotificationType.JOIN_REQUEST_REJECTED
-            event_type = AnalyticsEventType.JOIN_REQUEST_REJECTED
+        async def _txn():
+            if accept:
+                await self._add_participant(request.room_id, request.user_id)
+                request.status = JoinRequestStatus.ACCEPTED
+                _notif_type = NotificationType.JOIN_REQUEST_ACCEPTED
+                _event_type = AnalyticsEventType.JOIN_REQUEST_ACCEPTED
+            else:
+                request.status = JoinRequestStatus.REJECTED
+                _notif_type = NotificationType.JOIN_REQUEST_REJECTED
+                _event_type = AnalyticsEventType.JOIN_REQUEST_ACCEPTED
+
+            request.updated_at = datetime.now(timezone.utc)
+            request.handled_by = room.created_by
+            await self._join_repo.update(request)
+            return _notif_type, _event_type
+
+        notif_type, event_type = await self._tm.run_in_transaction(_txn)
+        logger.bind(request_id=request_id, status=request.status).info(
+            "Join request handled"
+        )
 
         await self._notifier.send(
             Notification(
@@ -271,14 +283,6 @@ class ChatRoomService:
                 payload={"room_name": room.name},
                 source_id=room.created_by,
             )
-        )
-        # TODO handle rollback here
-        request.updated_at = datetime.now(timezone.utc)
-        request.handled_by = room.created_by
-        await self._join_repo.update(request)
-        # TODO handle rollback here
-        logger.bind(request_id=request_id, status=request.status).info(
-            "Join request handled"
         )
 
         await self._analytics.publish_event(
@@ -307,7 +311,6 @@ class ChatRoomService:
         )
         await self._membership_repo.save(room_membership=room_membership)
         await self._room_repo.add_participant(room_id=room_id, user_id=user_id)
-        # TODO handle rollback here
         logger.bind(room_id=room_id, user_id=user_id).info("User added to room")
 
         await self._analytics.publish_event(
@@ -321,9 +324,11 @@ class ChatRoomService:
         return None
 
     async def remove_participant(self, room_id: UUID, user_id: UUID) -> None:
-        await self._membership_repo.delete(room_id=room_id, user_id=user_id)
-        await self._room_repo.remove_participant(room_id, user_id)
-        # TODO handle rollback here
+        async def _txn():
+            await self._membership_repo.delete(room_id=room_id, user_id=user_id)
+            await self._room_repo.remove_participant(room_id, user_id)
+
+        await self._tm.run_in_transaction(_txn)
         logger.bind(room_id=room_id, user_id=user_id).info("User removed from room")
 
         await self._analytics.publish_event(
