@@ -1,0 +1,19 @@
+from datetime import datetime
+from typing import Protocol, List
+from uuid import UUID
+
+from app.domain.entities.outbox_event import OutboxEvent
+
+
+class OutboxEventRepository(Protocol):
+    async def save(self, event: OutboxEvent) -> OutboxEvent: ...
+
+    async def list_pending(self, limit: int = 100) -> List[OutboxEvent]: ...
+
+    async def mark_in_progress(self, event_id: UUID) -> bool: ...
+
+    async def mark_sent(self, event_id: UUID, sent_at: datetime) -> None: ...
+
+    async def mark_failed(self, event_id: UUID, error: str) -> None: ...
+
+    async def delete(self, event_id: UUID) -> None: ...
