@@ -5,35 +5,22 @@ from app.domain.entities.chat_room import ChatRoom
 
 
 class ChatRoomRepository(Protocol):
-    async def save(self, room: ChatRoom) -> ChatRoom:
-        pass
+    async def save(self, room: ChatRoom) -> ChatRoom: ...
 
-    async def get(self, room_id: UUID) -> ChatRoom | None:
-        pass
+    async def get(self, room_id: UUID) -> ChatRoom | None: ...
 
-    async def update(self, room: ChatRoom) -> None:
-        pass
+    async def search(self, query: str, limit: int = 20) -> list[ChatRoom]: ...
 
-    async def delete_by_id(self, room_id: UUID) -> None:
-        pass
+    async def update(self, room: ChatRoom) -> None: ...
 
-    async def list_all(self) -> list[ChatRoom]:
-        pass
+    async def delete_by_id(self, room_id: UUID) -> None: ...
 
-    async def list_by_user(self, user_id: UUID) -> list[ChatRoom]:
-        pass
+    async def list_by_user(self, user_id: UUID) -> list[ChatRoom]: ...
 
-    async def add_participant(self, room_id: UUID, user_id: UUID) -> None:
-        pass
+    async def list_top_room(self, limit: int, only_public: bool) -> list[ChatRoom]: ...
 
-    async def remove_participant(self, room_id: UUID, user_id: UUID) -> None:
-        pass
+    async def add_participant(self, room_id: UUID, user_id: UUID) -> None: ...
 
-    async def exists(self, name: str) -> bool:
-        pass
+    async def remove_participant(self, room_id: UUID, user_id: UUID) -> None: ...
 
-    async def count_participants(self, room_id: UUID) -> int:
-        pass
-
-    async def find_most_active_rooms(self, limit: int = 10) -> list[ChatRoom]:
-        pass
+    async def exists(self, name: str) -> bool: ...
