@@ -8,8 +8,6 @@ from app.core.constants import (
     NotificationType,
     AnalyticsEventType,
     RoomRole,
-    OutboxMessageType,
-    OutboxStatus,
 )
 from app.domain.dtos.join_request import JoinRequestCreateDTO
 from app.domain.dtos.room import (
@@ -17,10 +15,7 @@ from app.domain.dtos.room import (
     RoomPublicDTO,
     RoomUpdateDTO,
 )
-from app.domain.entities.analytics_event import AnalyticsEvent
 from app.domain.entities.join_request import JoinRequest
-from app.domain.entities.notification import Notification
-from app.domain.entities.outbox_event import OutboxEvent
 from app.domain.entities.room import Room
 from app.domain.entities.room_membership import RoomMembership
 from app.domain.exceptions.join_request import (
@@ -41,6 +36,10 @@ from app.domain.repos.outbox_event import OutboxEventRepository
 from app.domain.repos.room import RoomRepository
 from app.domain.repos.room_membership import RoomMembershipRepository
 from app.domain.repos.user import UserRepository
+from app.domain.services.utils import (
+    create_outbox_analytics_event,
+    create_outbox_notification_event,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -97,24 +96,19 @@ class RoomService:
             room = await self._room_repo.save(room=room)
             await self._add_participant(room.id, room_data.created_by, RoomRole.OWNER)
 
-            event = AnalyticsEvent(
+            await create_outbox_analytics_event(
+                outbox_repo=self._outbox_repo,
                 event_type=AnalyticsEventType.ROOM_CREATED,
                 user_id=room_data.created_by,
                 room_id=room.id,
                 payload={"room_name": room.name},
-            )
-            outbox = OutboxEvent(
-                type=OutboxMessageType.ANALYTICS,
-                status=OutboxStatus.PENDING,
-                payload=event.to_payload(),
                 dedup_key=f"room_created:{room.id}",
             )
-            await self._outbox_repo.save(outbox)
+            logger.bind(room_id=room.id).info("Room created")
 
             return room
 
         room_create = await self._tm.run_in_transaction(_txn)
-        logger.bind(room_id=room_create.id).info("Room created")
 
         return self._room_to_dto(room=room_create)
 
@@ -142,24 +136,19 @@ class RoomService:
             room.updated_at = datetime.now(timezone.utc)
             await self._room_repo.update(room)
 
-            event = AnalyticsEvent(
+            await create_outbox_analytics_event(
+                outbox_repo=self._outbox_repo,
                 event_type=AnalyticsEventType.ROOM_UPDATED,
                 user_id=room.created_by,
                 room_id=room.id,
                 payload={"room_name": room.name},
-            )
-            out_event = OutboxEvent(
-                type=OutboxMessageType.ANALYTICS,
-                status=OutboxStatus.PENDING,
-                payload=event.to_payload(),
                 dedup_key=f"room_update:{room.id}:{room.updated_at.timestamp()}",
             )
-            await self._outbox_repo.save(out_event)
+            logger.bind(room_id=room.id).info("Room updated")
 
             return room
 
         room_update = await self._tm.run_in_transaction(_txn)
-        logger.bind(room_id=room_update.id).info("Room updated")
 
         return self._room_to_dto(room=room_update)
 
@@ -170,22 +159,19 @@ class RoomService:
 
         async def _txn():
             await self._room_repo.delete_by_id(room_id)
-            event = AnalyticsEvent(
+
+            await create_outbox_analytics_event(
+                outbox_repo=self._outbox_repo,
                 event_type=AnalyticsEventType.ROOM_DELETED,
                 user_id=room.created_by,
                 room_id=room.id,
                 payload={"room_name": room.name},
-            )
-            out_event = OutboxEvent(
-                type=OutboxMessageType.ANALYTICS,
-                status=OutboxStatus.PENDING,
-                payload=event.to_payload(),
                 dedup_key=f"room_deleted:{room.id}",
             )
-            await self._outbox_repo.save(out_event)
+
+            logger.bind(room_id=room_id).info("Room deleted")
 
         await self._tm.run_in_transaction(_txn)
-        logger.bind(room_id=room_id).info("Room deleted")
 
     async def get_room(self, room_id: UUID) -> RoomPublicDTO:
         room = await self._room_repo.get(room_id=room_id)
@@ -222,24 +208,20 @@ class RoomService:
             async def _txn():
                 await self._add_participant(room.id, join_request_data.user_id)
 
-                event = AnalyticsEvent(
+                await create_outbox_analytics_event(
+                    outbox_repo=self._outbox_repo,
                     event_type=AnalyticsEventType.USER_JOINED_ROOM,
                     user_id=join_request_data.user_id,
                     room_id=room.id,
                     payload={"room_name": room.name, "username": user.username},
-                )
-                out_event = OutboxEvent(
-                    type=OutboxMessageType.ANALYTICS,
-                    status=OutboxStatus.PENDING,
-                    payload=event.to_payload(),
                     dedup_key=f"user_join:{room.id}:{join_request_data.user_id}",
                 )
-                await self._outbox_repo.save(out_event)
+
+                logger.bind(room_id=room.id, user_id=join_request_data.user_id).info(
+                    "User joined public room"
+                )
 
             await self._tm.run_in_transaction(_txn)
-            logger.bind(room_id=room.id, user_id=join_request_data.user_id).info(
-                "User joined public room"
-            )
 
         already_requested = await self._join_repo.exists(
             room_id=room.id, user_id=join_request_data.user_id
@@ -256,38 +238,38 @@ class RoomService:
             )
             await self._join_repo.save(request)
 
-            notif = Notification(
+            await create_outbox_notification_event(
+                outbox_repo=self._outbox_repo,
+                notification_type=NotificationType.JOIN_REQUEST_CREATED,
                 user_id=room.created_by,
-                type=NotificationType.JOIN_REQUEST_CREATED,
-                payload={"room_name": room.name, "username": user.username},
                 source_id=join_request_data.user_id,
-            )
-            notif_out = OutboxEvent(
-                type=OutboxMessageType.NOTIFICATION,
-                status=OutboxStatus.PENDING,
-                payload=notif.to_payload(),
+                payload={"room_name": room.name, "username": user.username},
                 dedup_key=f"notif_joinreq:{room.id}:{join_request_data.user_id}",
             )
-            await self._outbox_repo.save(notif_out)
 
-            event = AnalyticsEvent(
+            await create_outbox_analytics_event(
+                outbox_repo=self._outbox_repo,
                 event_type=AnalyticsEventType.JOIN_REQUEST_CREATED,
                 user_id=join_request_data.user_id,
                 room_id=room.id,
                 payload={"room_name": room.name, "username": user.username},
-            )
-            event_out = OutboxEvent(
-                type=OutboxMessageType.ANALYTICS,
-                status=OutboxStatus.PENDING,
-                payload=event.to_payload(),
                 dedup_key=f"joinreq_created:{room.id}:{join_request_data.user_id}",
             )
-            await self._outbox_repo.save(event_out)
+
+            await create_outbox_analytics_event(
+                outbox_repo=self._outbox_repo,
+                event_type=AnalyticsEventType.JOIN_REQUEST_CREATED,
+                user_id=join_request_data.user_id,
+                room_id=room.id,
+                payload={"room_name": room.name, "username": user.username},
+                dedup_key=f"joinreq_created:{room.id}:{join_request_data.user_id}",
+            )
+
+            logger.bind(
+                room_id=join_request_data.room_id, user_id=join_request_data.user_id
+            ).info("Join request created")
 
         await self._tm.run_in_transaction(_txn)
-        logger.bind(
-            room_id=join_request_data.room_id, user_id=join_request_data.user_id
-        ).info("Join request created")
 
     async def handle_join_request(self, request_id: UUID, accept: bool) -> None:
         request = await self._join_repo.get(request_id)
@@ -313,38 +295,29 @@ class RoomService:
             request.handled_by = room.created_by
             await self._join_repo.update(request)
 
-            notif = Notification(
+            await create_outbox_notification_event(
+                outbox_repo=self._outbox_repo,
+                notification_type=notif_type,
                 user_id=request.user_id,
-                type=notif_type,
-                payload={"room_name": room.name},
                 source_id=room.created_by,
-            )
-            notif_out = OutboxEvent(
-                type=OutboxMessageType.NOTIFICATION,
-                status=OutboxStatus.PENDING,
-                payload=notif.to_payload(),
+                payload={"room_name": room.name},
                 dedup_key=f"joinreq_handled:{request.id}",
             )
-            await self._outbox_repo.save(notif_out)
 
-            event = AnalyticsEvent(
+            await create_outbox_analytics_event(
+                outbox_repo=self._outbox_repo,
                 event_type=event_type,
                 user_id=request.user_id,
                 room_id=request.room_id,
                 payload={"room_name": room.name},
-            )
-            event_out = OutboxEvent(
-                type=OutboxMessageType.ANALYTICS,
-                status=OutboxStatus.PENDING,
-                payload=event.to_payload(),
                 dedup_key=f"analytics_joinreq:{request.id}",
             )
-            await self._outbox_repo.save(event_out)
+
+            logger.bind(request_id=request_id, status=request.status).info(
+                "Join request handled"
+            )
 
         await self._tm.run_in_transaction(_txn)
-        logger.bind(request_id=request_id, status=request.status).info(
-            "Join request handled"
-        )
 
     async def _add_participant(
         self, room_id: UUID, user_id: UUID, role: RoomRole = RoomRole.MEMBER
@@ -385,17 +358,12 @@ class RoomService:
                     "User removed from room"
                 )
 
-            event = AnalyticsEvent(
+            await create_outbox_analytics_event(
+                outbox_repo=self._outbox_repo,
                 event_type=event_type,
                 user_id=user_id,
                 room_id=room_id,
-            )
-            out_event = OutboxEvent(
-                type=OutboxMessageType.ANALYTICS,
-                status=OutboxStatus.PENDING,
-                payload=event.to_payload(),
                 dedup_key=f"user_left:{room_id}:{user_id}",
             )
-            await self._outbox_repo.save(out_event)
 
         await self._tm.run_in_transaction(_txn)
