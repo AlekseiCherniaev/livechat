@@ -29,7 +29,6 @@ from app.domain.exceptions.room import (
 )
 from app.domain.exceptions.user import UserNotFound
 from app.domain.ports.analytics import AnalyticsPort
-from app.domain.ports.notification_sender import NotificationSenderPort
 from app.domain.ports.transaction_manager import TransactionManager
 from app.domain.repos.join_request import JoinRequestRepository
 from app.domain.repos.outbox_event import OutboxEventRepository
@@ -53,7 +52,6 @@ class RoomService:
         membership_repo: RoomMembershipRepository,
         outbox_repo: OutboxEventRepository,
         analytics_port: AnalyticsPort,
-        notification_port: NotificationSenderPort,
         transaction_manager: TransactionManager,
     ):
         self._room_repo = room_repo
@@ -62,7 +60,6 @@ class RoomService:
         self._membership_repo = membership_repo
         self._outbox_repo = outbox_repo
         self._analytics = analytics_port
-        self._notifier = notification_port
         self._tm = transaction_manager
 
     @staticmethod
