@@ -256,15 +256,6 @@ class RoomService:
                 dedup_key=f"joinreq_created:{room.id}:{join_request_data.user_id}",
             )
 
-            await create_outbox_analytics_event(
-                outbox_repo=self._outbox_repo,
-                event_type=AnalyticsEventType.JOIN_REQUEST_CREATED,
-                user_id=join_request_data.user_id,
-                room_id=room.id,
-                payload={"room_name": room.name, "username": user.username},
-                dedup_key=f"joinreq_created:{room.id}:{join_request_data.user_id}",
-            )
-
             logger.bind(
                 room_id=join_request_data.room_id, user_id=join_request_data.user_id
             ).info("Join request created")
