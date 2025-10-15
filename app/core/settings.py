@@ -56,7 +56,7 @@ class Settings(BaseSettings):
 
     cassandra_contact_point: str = "localhost"
     cassandra_port: int = 9042
-    cassandra_keyspace: str = "chat_messages"
+    cassandra_keyspace: str = "messages"
     cassandra_user: str | None = None
     cassandra_password: str | None = None
 
