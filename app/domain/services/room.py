@@ -9,12 +9,14 @@ from app.core.constants import (
     AnalyticsEventType,
     RoomRole,
 )
-from app.domain.dtos.join_request import JoinRequestCreateDTO
+from app.domain.dtos.join_request import JoinRequestCreateDTO, JoinRequestPublicDTO
 from app.domain.dtos.room import (
     RoomCreateDTO,
     RoomPublicDTO,
     RoomUpdateDTO,
+    room_to_dto,
 )
+from app.domain.dtos.user import user_to_dto, UserPublicDTO
 from app.domain.entities.join_request import JoinRequest
 from app.domain.entities.room import Room
 from app.domain.entities.room_membership import RoomMembership
@@ -62,19 +64,6 @@ class RoomService:
         self._analytics = analytics_port
         self._tm = transaction_manager
 
-    @staticmethod
-    def _room_to_dto(room: Room) -> RoomPublicDTO:
-        return RoomPublicDTO(
-            name=room.name,
-            description=room.description,
-            is_public=room.is_public,
-            created_by=room.created_by,
-            participants_count=room.participants_count,
-            created_at=room.created_at,
-            updated_at=room.updated_at,
-            id=room.id,
-        )
-
     async def create_room(self, room_data: RoomCreateDTO) -> RoomPublicDTO:
         if await self._room_repo.exists(name=room_data.name):
             raise RoomAlreadyExists
@@ -107,12 +96,12 @@ class RoomService:
 
         room_create = await self._tm.run_in_transaction(_txn)
 
-        return self._room_to_dto(room=room_create)
+        return room_to_dto(room=room_create)
 
     async def update_room(
         self, room_id: UUID, room_data: RoomUpdateDTO
     ) -> RoomPublicDTO:
-        room = await self._room_repo.get(room_id=room_id)
+        room = await self._room_repo.get_by_id(room_id=room_id)
         if not room:
             raise RoomNotFound
 
@@ -131,7 +120,7 @@ class RoomService:
 
         async def _txn():
             room.updated_at = datetime.now(timezone.utc)
-            await self._room_repo.update(room)
+            room_saved = await self._room_repo.save(room)
 
             await create_outbox_analytics_event(
                 outbox_repo=self._outbox_repo,
@@ -143,19 +132,19 @@ class RoomService:
             )
             logger.bind(room_id=room.id).info("Room updated")
 
-            return room
+            return room_saved
 
         room_update = await self._tm.run_in_transaction(_txn)
 
-        return self._room_to_dto(room=room_update)
+        return room_to_dto(room=room_update)
 
     async def delete_room(self, room_id: UUID) -> None:
-        room = await self._room_repo.get(room_id=room_id)
+        room = await self._room_repo.get_by_id(room_id=room_id)
         if not room:
             raise RoomNotFound
 
         async def _txn():
-            await self._room_repo.delete_by_id(room_id)
+            await self._room_repo.delete_by_id(room_id=room_id)
 
             await create_outbox_analytics_event(
                 outbox_repo=self._outbox_repo,
@@ -171,28 +160,51 @@ class RoomService:
         await self._tm.run_in_transaction(_txn)
 
     async def get_room(self, room_id: UUID) -> RoomPublicDTO:
-        room = await self._room_repo.get(room_id=room_id)
+        room = await self._room_repo.get_by_id(room_id=room_id)
         if room is None:
             raise RoomNotFound
-        return self._room_to_dto(room=room)
+        return room_to_dto(room=room)
+
+    async def list_room_users(self, room_id: UUID) -> list[UserPublicDTO]:
+        users = await self._membership_repo.list_users(room_id=room_id)
+        return [user_to_dto(user=user) for user in users]
 
     async def list_rooms_for_user(self, user_id: UUID) -> list[RoomPublicDTO]:
-        rooms = await self._room_repo.list_by_user(user_id=user_id)
-        return [self._room_to_dto(room=room) for room in rooms]
+        rooms = await self._membership_repo.list_rooms_for_user(user_id=user_id)
+        return [room_to_dto(room=room) for room in rooms]
 
     async def list_top_public_rooms(self, limit: int) -> list[RoomPublicDTO]:
         rooms = await self._room_repo.list_top_room(limit=limit, only_public=True)
-        return [self._room_to_dto(room) for room in rooms]
+        return [room_to_dto(room) for room in rooms]
 
-    async def list_join_requests(self, room_id: UUID) -> list[JoinRequest]:
-        return await self._join_repo.list_by_room(room_id)
+    async def list_join_requests(self, room_id: UUID) -> list[JoinRequestPublicDTO]:
+        join_requests = await self._join_repo.list_by_room(
+            room_id=room_id, status=JoinRequestStatus.PENDING
+        )
+        if not join_requests:
+            return []
+
+        # TODO optimize
+        result = []
+        for join_request in join_requests:
+            user = await self._user_repo.get_by_id(user_id=join_request.user_id)
+            room = await self._room_repo.get_by_id(room_id=join_request.room_id)
+            result.append(
+                JoinRequestPublicDTO(
+                    username=user.username,
+                    room_name=room.name,
+                    message=join_request.message,
+                )
+            )
+
+        return result
 
     async def search_rooms(self, query: str, limit: int) -> list[RoomPublicDTO]:
         rooms = await self._room_repo.search(query=query, limit=limit)
-        return [self._room_to_dto(room=room) for room in rooms]
+        return [room_to_dto(room=room) for room in rooms]
 
     async def request_join(self, join_request_data: JoinRequestCreateDTO) -> None:
-        room = await self._room_repo.get(room_id=join_request_data.room_id)
+        room = await self._room_repo.get_by_id(room_id=join_request_data.room_id)
         if not room:
             raise RoomNotFound
 
@@ -264,7 +276,7 @@ class RoomService:
         if not request:
             raise JoinRequestNotFound
 
-        room = await self._room_repo.get(room_id=request.room_id)
+        room = await self._room_repo.get_by_id(room_id=request.room_id)
         if room is None:
             raise RoomNotFound
 
@@ -321,12 +333,12 @@ class RoomService:
             joined_at=datetime.now(timezone.utc),
         )
         await self._membership_repo.save(room_membership=room_membership)
-        await self._room_repo.add_participant(room_id=room_id, user_id=user_id)
+        await self._room_repo.add_participant(room_id=room_id)
         logger.bind(room_id=room_id, user_id=user_id).info("User added to room")
         return None
 
     async def remove_participant(self, room_id: UUID, user_id: UUID) -> None:
-        room = await self._room_repo.get(room_id=room_id)
+        room = await self._room_repo.get_by_id(room_id=room_id)
         if room is None:
             raise RoomNotFound
 
@@ -340,7 +352,7 @@ class RoomService:
                     "Room was deleted as creator left"
                 )
             else:
-                await self._room_repo.remove_participant(room_id, user_id)
+                await self._room_repo.remove_participant(room_id)
                 event_type = AnalyticsEventType.USER_LEFT_ROOM
                 logger.bind(room_id=room_id, user_id=user_id).info(
                     "User removed from room"
