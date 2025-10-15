@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 import pytest
+from pytest_asyncio import fixture
 
 from app.domain.dtos.user import UserAuthDTO
 from app.domain.entities.user import User
@@ -15,9 +16,8 @@ from app.domain.exceptions.user_session import SessionNotFound, InvalidSession
 from app.domain.services.user import UserService
 
 
-@pytest.mark.asyncio
 class TestUserService:
-    @pytest.fixture
+    @fixture
     def service(
         self, user_repo, session_repo, outbox_repo, password_hasher, tm
     ) -> UserService:
@@ -29,7 +29,7 @@ class TestUserService:
             transaction_manager=tm,
         )
 
-    @pytest.fixture
+    @fixture
     def user_auth_dto(self):
         return UserAuthDTO(username="alice", password="secret")
 

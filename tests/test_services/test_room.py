@@ -1,6 +1,7 @@
 from uuid import uuid4
 
 import pytest
+from pytest_asyncio import fixture
 
 from app.core.constants import JoinRequestStatus
 from app.domain.dtos.join_request import JoinRequestCreateDTO
@@ -21,7 +22,7 @@ from app.domain.services.room import RoomService
 
 
 class TestRoomService:
-    @pytest.fixture
+    @fixture
     def service(
         self,
         room_repo,
