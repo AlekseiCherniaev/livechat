@@ -10,3 +10,11 @@ class JoinRequestCreateDTO:
     user_id: UUID
     room_id: UUID
     status: JoinRequestStatus = JoinRequestStatus.PENDING
+
+
+@dataclass
+class JoinRequestPublicDTO:
+    message: str | None
+    username: str
+    room_name: str
+    status: JoinRequestStatus = JoinRequestStatus.PENDING

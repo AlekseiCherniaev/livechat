@@ -59,17 +59,17 @@ class TestNotificationService:
             read=False,
             type=NotificationType.MESSAGE_SENT,
         )
-        notif_repo.get.return_value = notification
+        notif_repo.get_by_id.return_value = notification
 
         await service.mark_as_read(notif_id)
 
-        notif_repo.get.assert_awaited_once_with(notification_id=notif_id)
+        notif_repo.get_by_id.assert_awaited_once_with(notification_id=notif_id)
         tm.run_in_transaction.assert_awaited_once()
         service._outbox_repo.save.assert_awaited()
 
     async def test_mark_as_read_not_found(self, service, notif_repo):
         notif_id = uuid4()
-        notif_repo.get.return_value = None
+        notif_repo.get_by_id.return_value = None
 
         with pytest.raises(NotificationNotFound):
             await service.mark_as_read(notif_id)

@@ -65,11 +65,11 @@ class TestWebSocketService:
             session_id=uuid4(),
             ip_address="127.0.0.1",
         )
-        ws_session_repo.get.return_value = session
+        ws_session_repo.get_by_id.return_value = session
 
         await service.disconnect(session.id)
 
-        ws_session_repo.get.assert_awaited_once_with(session.id)
+        ws_session_repo.get_by_id.assert_awaited_once_with(session_id=session.id)
         tm.run_in_transaction.assert_awaited_once()
         ws_session_repo.delete_by_id.assert_awaited_once_with(session.id)
         connection_port.disconnect.assert_awaited_once_with(session.id)
@@ -77,7 +77,7 @@ class TestWebSocketService:
         outbox_repo.save.assert_awaited_once()
 
     async def test_disconnect_not_found(self, service, ws_session_repo, tm):
-        ws_session_repo.get.return_value = None
+        ws_session_repo.get_by_id.return_value = None
 
         await service.disconnect(uuid4())
 
@@ -110,18 +110,18 @@ class TestWebSocketService:
             session_id=session_id,
             ip_address="127.0.0.1",
         )
-        ws_session_repo.get.return_value = session
+        ws_session_repo.get_by_id.return_value = session
 
         await service.update_ping(session_id)
 
-        ws_session_repo.get.assert_awaited_once_with(session_id)
+        ws_session_repo.get_by_id.assert_awaited_once_with(session_id)
         tm.run_in_transaction.assert_awaited_once()
         ws_session_repo.update_last_ping.assert_awaited_once_with(session_id)
         connection_port.update_ping.assert_awaited_once_with(session_id)
         user_repo.update_last_active.assert_awaited_once_with(session.user_id)
 
     async def test_update_ping_not_found(self, service, ws_session_repo):
-        ws_session_repo.get.return_value = None
+        ws_session_repo.get_by_id.return_value = None
         with pytest.raises(WebSocketSessionNotFound):
             await service.update_ping(uuid4())
 

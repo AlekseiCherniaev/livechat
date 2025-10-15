@@ -19,11 +19,19 @@ from app.domain.services.user import UserService
 class TestUserService:
     @fixture
     def service(
-        self, user_repo, session_repo, ws_session_repo, outbox_repo, password_hasher, tm
+        self,
+        user_repo,
+        session_repo,
+        notif_repo,
+        ws_session_repo,
+        outbox_repo,
+        password_hasher,
+        tm,
     ) -> UserService:
         return UserService(
             user_repo=user_repo,
             session_repo=session_repo,
+            notif_repo=notif_repo,
             ws_session_repo=ws_session_repo,
             outbox_repo=outbox_repo,
             password_hasher_port=password_hasher,
@@ -83,11 +91,11 @@ class TestUserService:
         session = UserSession(
             user_id=uuid4(), connected_at=datetime.now(timezone.utc), id=uuid4()
         )
-        session_repo.get.return_value = session
+        session_repo.get_by_id.return_value = session
 
         await service.logout_user(session_id=str(session.id))
 
-        session_repo.get.assert_awaited_once_with(session.id)
+        session_repo.get_by_id.assert_awaited_once_with(session_id=session.id)
         session_repo.delete_by_id.assert_awaited_once_with(session_id=session.id)
         tm.run_in_transaction.assert_awaited_once()
         service._outbox_repo.save.assert_awaited_once()
@@ -104,17 +112,17 @@ class TestUserService:
             user_id=user.id, connected_at=datetime.now(timezone.utc), id=uuid4()
         )
 
-        session_repo.get.return_value = session
+        session_repo.get_by_id.return_value = session
         user_repo.get_by_id.return_value = user
 
         result = await service.get_user_by_session(str(session.id))
 
         assert result.username == user.username
-        session_repo.get.assert_awaited_once()
+        session_repo.get_by_id.assert_awaited_once()
         user_repo.get_by_id.assert_awaited_once_with(user_id=user.id)
 
     async def test_get_user_by_session_not_found(self, service, session_repo):
-        session_repo.get.return_value = None
+        session_repo.get_by_id.return_value = None
         with pytest.raises(SessionNotFound):
             await service.get_user_by_session(str(uuid4()))
 
@@ -130,7 +138,7 @@ class TestUserService:
         session = UserSession(
             user_id=uuid4(), connected_at=datetime.now(timezone.utc), id=uuid4()
         )
-        session_repo.get.return_value = session
+        session_repo.get_by_id.return_value = session
         user_repo.get_by_id.return_value = None
 
         with pytest.raises(UserNotFound):

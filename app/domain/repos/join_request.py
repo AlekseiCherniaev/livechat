@@ -1,5 +1,7 @@
 from typing import Protocol
 from uuid import UUID
+
+from app.core.constants import JoinRequestStatus
 from app.domain.entities.join_request import JoinRequest
 
 
@@ -8,11 +10,13 @@ class JoinRequestRepository(Protocol):
 
     async def get(self, request_id: UUID) -> JoinRequest | None: ...
 
-    async def update(self, request: JoinRequest) -> None: ...
+    async def update(self, request: JoinRequest) -> JoinRequest: ...
 
     async def delete(self, request_id: UUID) -> None: ...
 
-    async def list_by_room(self, room_id: UUID) -> list[JoinRequest]: ...
+    async def list_by_room(
+        self, room_id: UUID, status: JoinRequestStatus
+    ) -> list[JoinRequest]: ...
 
     async def list_by_user(self, user_id: UUID) -> list[JoinRequest]: ...
 
