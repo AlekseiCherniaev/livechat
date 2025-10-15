@@ -3,10 +3,12 @@ from unittest.mock import AsyncMock
 from pytest_asyncio import fixture
 
 from app.domain.ports.analytics import AnalyticsPort
+from app.domain.ports.connection import ConnectionPort
 from app.domain.ports.notification_sender import NotificationSenderPort
 from app.domain.ports.password_hasher import PasswordHasherPort
 from app.domain.ports.transaction_manager import TransactionManager
 from app.domain.repos.join_request import JoinRequestRepository
+from app.domain.repos.message import MessageRepository
 from app.domain.repos.outbox_event import OutboxEventRepository
 from app.domain.repos.room import RoomRepository
 from app.domain.repos.room_membership import RoomMembershipRepository
@@ -40,6 +42,11 @@ def membership_repo():
 
 
 @fixture
+def message_repo():
+    return AsyncMock(spec=MessageRepository)
+
+
+@fixture
 def outbox_repo():
     return AsyncMock(spec=OutboxEventRepository)
 
@@ -52,6 +59,11 @@ def analytics_port():
 @fixture
 def notification_port():
     return AsyncMock(spec=NotificationSenderPort)
+
+
+@fixture
+def connection_port():
+    return AsyncMock(spec=ConnectionPort)
 
 
 @fixture
