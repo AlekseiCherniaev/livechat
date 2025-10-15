@@ -1,0 +1,73 @@
+from unittest.mock import AsyncMock
+
+from pytest_asyncio import fixture
+
+from app.domain.ports.analytics import AnalyticsPort
+from app.domain.ports.notification_sender import NotificationSenderPort
+from app.domain.ports.password_hasher import PasswordHasherPort
+from app.domain.ports.transaction_manager import TransactionManager
+from app.domain.repos.join_request import JoinRequestRepository
+from app.domain.repos.outbox_event import OutboxEventRepository
+from app.domain.repos.room import RoomRepository
+from app.domain.repos.room_membership import RoomMembershipRepository
+from app.domain.repos.user import UserRepository
+from app.domain.repos.user_session import UserSessionRepository
+
+
+@fixture
+def room_repo():
+    return AsyncMock(spec=RoomRepository)
+
+
+@fixture
+def user_repo():
+    return AsyncMock(spec=UserRepository)
+
+
+@fixture
+def session_repo():
+    return AsyncMock(spec=UserSessionRepository)
+
+
+@fixture
+def join_repo():
+    return AsyncMock(spec=JoinRequestRepository)
+
+
+@fixture
+def membership_repo():
+    return AsyncMock(spec=RoomMembershipRepository)
+
+
+@fixture
+def outbox_repo():
+    return AsyncMock(spec=OutboxEventRepository)
+
+
+@fixture
+def analytics_port():
+    return AsyncMock(spec=AnalyticsPort)
+
+
+@fixture
+def notification_port():
+    return AsyncMock(spec=NotificationSenderPort)
+
+
+@fixture
+def password_hasher():
+    hasher = AsyncMock(spec=PasswordHasherPort)
+    hasher.hash.side_effect = lambda password: f"hashed-{password}"
+    hasher.verify.side_effect = lambda plain, hashed: hashed == f"hashed-{plain}"
+    return hasher
+
+
+@fixture
+def tm():
+    tm = AsyncMock(spec=TransactionManager)
+
+    async def _run_in_txn(fn, *a, **kw):
+        return await fn(*a, **kw)
+
+    tm.run_in_transaction.side_effect = _run_in_txn
+    return tm
