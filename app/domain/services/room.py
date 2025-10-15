@@ -177,7 +177,9 @@ class RoomService:
         rooms = await self._room_repo.list_top_room(limit=limit, only_public=True)
         return [room_to_dto(room) for room in rooms]
 
-    async def list_join_requests(self, room_id: UUID) -> list[JoinRequestPublicDTO]:
+    async def list_room_join_requests(
+        self, room_id: UUID
+    ) -> list[JoinRequestPublicDTO]:
         join_requests = await self._join_repo.list_by_room(
             room_id=room_id, status=JoinRequestStatus.PENDING
         )
@@ -185,6 +187,30 @@ class RoomService:
             return []
 
         # TODO optimize
+        result = []
+        for join_request in join_requests:
+            user = await self._user_repo.get_by_id(user_id=join_request.user_id)
+            room = await self._room_repo.get_by_id(room_id=join_request.room_id)
+            result.append(
+                JoinRequestPublicDTO(
+                    username=user.username,
+                    room_name=room.name,
+                    message=join_request.message,
+                )
+            )
+
+        return result
+
+    async def list_user_join_requests(
+        self, user_id: UUID
+    ) -> list[JoinRequestPublicDTO]:
+        # TODO refactor
+        join_requests = await self._join_repo.list_by_user(
+            user_id=user_id, status=JoinRequestStatus.PENDING
+        )
+        if not join_requests:
+            return []
+
         result = []
         for join_request in join_requests:
             user = await self._user_repo.get_by_id(user_id=join_request.user_id)
@@ -272,7 +298,7 @@ class RoomService:
         await self._tm.run_in_transaction(_txn)
 
     async def handle_join_request(self, request_id: UUID, accept: bool) -> None:
-        request = await self._join_repo.get(request_id)
+        request = await self._join_repo.get_by_id(request_id=request_id)
         if not request:
             raise JoinRequestNotFound
 
@@ -293,7 +319,7 @@ class RoomService:
 
             request.updated_at = datetime.now(timezone.utc)
             request.handled_by = room.created_by
-            await self._join_repo.update(request)
+            await self._join_repo.save(request)
 
             await create_outbox_notification_event(
                 outbox_repo=self._outbox_repo,

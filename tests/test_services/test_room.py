@@ -217,19 +217,19 @@ class TestRoomService:
         req = JoinRequest(
             id=uuid4(), room_id=rid, user_id=uid, status=JoinRequestStatus.PENDING
         )
-        join_repo.get.return_value = req
+        join_repo.get_by_id.return_value = req
         room_repo.get_by_id.return_value = Room(
             id=rid, name="R", created_by=uuid4(), is_public=True
         )
 
         await service.handle_join_request(req.id, accept=True)
 
-        join_repo.update.assert_awaited_once()
+        join_repo.save.assert_awaited_once()
         outbox_repo.save.assert_awaited()
         tm.run_in_transaction.assert_awaited_once()
 
     async def test_handle_join_request_not_found(self, service, join_repo):
-        join_repo.get.return_value = None
+        join_repo.get_by_id.return_value = None
         with pytest.raises(Exception):
             await service.handle_join_request(uuid4(), True)
 
@@ -242,7 +242,7 @@ class TestRoomService:
             user_id=uuid4(),
             status=JoinRequestStatus.PENDING,
         )
-        join_repo.get.return_value = req
+        join_repo.get_by_id.return_value = req
         room_repo.get_by_id.return_value = None
         with pytest.raises(RoomNotFound):
             await service.handle_join_request(req.id, True)
