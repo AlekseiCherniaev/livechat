@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from uuid import uuid4
+from uuid import uuid4, UUID
 
 import pytest
 from pytest_asyncio import fixture
@@ -60,8 +60,7 @@ class TestUserService:
 
         result = await service.login_user(user_auth_dto)
 
-        assert isinstance(result, UserSession)
-        assert result.user_id == user.id
+        assert isinstance(result, UUID)
         tm.run_in_transaction.assert_awaited_once()
         session_repo.save.assert_awaited_once()
         service._outbox_repo.save.assert_awaited_once()

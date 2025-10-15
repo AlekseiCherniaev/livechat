@@ -31,7 +31,6 @@ class TestRoomService:
         membership_repo,
         outbox_repo,
         analytics_port,
-        notification_port,
         tm,
     ):
         return RoomService(
@@ -41,7 +40,6 @@ class TestRoomService:
             membership_repo,
             outbox_repo,
             analytics_port,
-            notification_port,
             tm,
         )
 
