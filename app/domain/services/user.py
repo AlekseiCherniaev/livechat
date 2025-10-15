@@ -4,7 +4,7 @@ from uuid import UUID
 import structlog
 
 from app.core.constants import AnalyticsEventType
-from app.domain.dtos.user import UserAuthDTO, UserPublicDTO
+from app.domain.dtos.user import UserAuthDTO, UserPublicDTO, user_to_dto
 from app.domain.entities.user import User
 from app.domain.entities.user_session import UserSession
 from app.domain.exceptions.user_session import SessionNotFound, InvalidSession
@@ -43,17 +43,6 @@ class UserService:
         self._outbox_repo = outbox_repo
         self._password_hasher = password_hasher_port
         self._tm = transaction_manager
-
-    @staticmethod
-    def _user_to_dto(user: User) -> UserPublicDTO:
-        return UserPublicDTO(
-            username=user.username,
-            last_login_at=user.last_login_at,
-            last_active=user.last_active,
-            created_at=user.created_at,
-            updated_at=user.updated_at,
-            id=user.id,
-        )
 
     async def register_user(self, user_data: UserAuthDTO) -> None:
         if await self._user_repo.exists(username=user_data.username):
@@ -174,4 +163,4 @@ class UserService:
             raise UserNotFound
 
         logger.bind(user_id=user.id).debug("Retrieved user from repo")
-        return self._user_to_dto(user=user)
+        return user_to_dto(user=user)
