@@ -42,9 +42,11 @@ class JoinRequestStatus(Enum):
 
 
 class OutboxMessageType(Enum):
+    ANALYTICS = "ANALYTICS"
+    NOTIFICATION = "NOTIFICATION"
+
     JOIN_REQUEST_CREATED = "JOIN_REQUEST_CREATED"
     ROOM_CREATED = "ROOM_CREATED"
-    NOTIFICATION = "NOTIFICATION"
 
 
 class OutboxStatus(Enum):
