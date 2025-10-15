@@ -18,6 +18,7 @@ from app.domain.ports.transaction_manager import TransactionManager
 from app.domain.repos.outbox_event import OutboxEventRepository
 from app.domain.repos.user_session import UserSessionRepository
 from app.domain.repos.user import UserRepository
+from app.domain.repos.websocket_session import WebSocketSessionRepository
 from app.domain.services.utils import create_outbox_analytics_event
 
 logger = structlog.get_logger(__name__)
@@ -28,12 +29,14 @@ class UserService:
         self,
         user_repo: UserRepository,
         session_repo: UserSessionRepository,
+        ws_session_repo: WebSocketSessionRepository,
         outbox_repo: OutboxEventRepository,
         password_hasher_port: PasswordHasherPort,
         transaction_manager: TransactionManager,
     ) -> None:
         self._user_repo = user_repo
         self._session_repo = session_repo
+        self._ws_session_repo = ws_session_repo
         self._outbox_repo = outbox_repo
         self._password_hasher = password_hasher_port
         self._tm = transaction_manager
@@ -118,6 +121,7 @@ class UserService:
 
         async def _txn():
             await self._session_repo.delete_by_id(session_id=session_uuid)
+            await self._ws_session_repo.delete_by_user_id(user_id=session.user_id)
             await self._user_repo.update_last_active(session.user_id)
 
             await create_outbox_analytics_event(
@@ -134,6 +138,7 @@ class UserService:
     async def delete_user(self, user_id: UUID) -> None:
         async def _txn():
             await self._session_repo.delete_by_user_id(user_id=user_id)
+            await self._ws_session_repo.delete_by_user_id(user_id=user_id)
             await self._user_repo.delete_by_id(user_id=user_id)
 
             await create_outbox_analytics_event(

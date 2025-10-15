@@ -126,3 +126,6 @@ class WebSocketService:
 
     async def is_user_online(self, user_id: UUID) -> bool:
         return await self._conn.is_user_online(user_id)
+
+    async def count_websockets_by_room(self, room_id: UUID) -> int:
+        return await self._ws_session_repo.count_by_room(room_id=room_id)

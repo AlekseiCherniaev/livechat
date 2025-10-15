@@ -19,11 +19,12 @@ from app.domain.services.user import UserService
 class TestUserService:
     @fixture
     def service(
-        self, user_repo, session_repo, outbox_repo, password_hasher, tm
+        self, user_repo, session_repo, ws_session_repo, outbox_repo, password_hasher, tm
     ) -> UserService:
         return UserService(
             user_repo=user_repo,
             session_repo=session_repo,
+            ws_session_repo=ws_session_repo,
             outbox_repo=outbox_repo,
             password_hasher_port=password_hasher,
             transaction_manager=tm,
