@@ -3,10 +3,8 @@ from uuid import UUID
 
 import structlog
 
-from app.core.constants import AnalyticsEventType, OutboxMessageType, OutboxStatus
+from app.core.constants import AnalyticsEventType
 from app.domain.dtos.user import UserAuthDTO, UserPublicDTO
-from app.domain.entities.analytics_event import AnalyticsEvent
-from app.domain.entities.outbox_event import OutboxEvent
 from app.domain.entities.user import User
 from app.domain.entities.user_session import UserSession
 from app.domain.exceptions.user_session import SessionNotFound, InvalidSession
@@ -20,6 +18,7 @@ from app.domain.ports.transaction_manager import TransactionManager
 from app.domain.repos.outbox_event import OutboxEventRepository
 from app.domain.repos.user_session import UserSessionRepository
 from app.domain.repos.user import UserRepository
+from app.domain.services.utils import create_outbox_analytics_event
 
 logger = structlog.get_logger(__name__)
 
@@ -58,26 +57,18 @@ class UserService:
             user = User(username=user_data.username, hashed_password=hashed_password)
             user = await self._user_repo.save(user=user)
 
-            event = AnalyticsEvent(
+            await create_outbox_analytics_event(
+                outbox_repo=self._outbox_repo,
                 event_type=AnalyticsEventType.USER_REGISTERED,
                 user_id=user.id,
-            )
-            outbox = OutboxEvent(
-                type=OutboxMessageType.ANALYTICS,
-                status=OutboxStatus.PENDING,
-                payload=event.to_payload(),
                 dedup_key=f"user_register:{user.id}",
             )
-            await self._outbox_repo.save(outbox)
 
-            return user
+            logger.bind(username=user.username).debug("Saved user in repo")
 
-        user_create = await self._tm.run_in_transaction(_txn)
+        await self._tm.run_in_transaction(_txn)
 
-        await self._user_repo.save(user=user_create)
-        logger.bind(username=user_create.username).debug("Saved user in repo")
-
-    async def login_user(self, user_data: UserAuthDTO) -> UserSession:
+    async def login_user(self, user_data: UserAuthDTO) -> UUID:
         user = await self._user_repo.get_by_username(username=user_data.username)
         if not user or not self._password_hasher.verify(
             user_data.password, user.hashed_password
@@ -93,26 +84,22 @@ class UserService:
             )
             await self._session_repo.save(session=session)
 
-            event = AnalyticsEvent(
+            await create_outbox_analytics_event(
+                outbox_repo=self._outbox_repo,
                 event_type=AnalyticsEventType.USER_LOGGED_IN,
                 user_id=user.id,
-            )
-            outbox = OutboxEvent(
-                type=OutboxMessageType.ANALYTICS,
-                status=OutboxStatus.PENDING,
-                payload=event.to_payload(),
                 dedup_key=f"user_login:{user.id}:{session.connected_at.timestamp()}",
             )
-            await self._outbox_repo.save(outbox)
 
-            return session
+            logger.bind(session_id=session.id).debug(
+                "Saved session and updated user in repo"
+            )
 
-        session_create = await self._tm.run_in_transaction(_txn)
-        logger.bind(session_id=session_create.id).debug(
-            "Saved session and updated user in repo"
-        )
+            return session.id
 
-        return session_create
+        session_id = await self._tm.run_in_transaction(_txn)
+
+        return session_id
 
     async def logout_user(self, session_id: str | None) -> None:
         if not session_id:
@@ -130,20 +117,16 @@ class UserService:
         async def _txn():
             await self._session_repo.delete_by_id(session_id=session_uuid)
 
-            event = AnalyticsEvent(
+            await create_outbox_analytics_event(
+                outbox_repo=self._outbox_repo,
                 event_type=AnalyticsEventType.USER_LOGGED_OUT,
                 user_id=session.user_id,
-            )
-            outbox = OutboxEvent(
-                type=OutboxMessageType.ANALYTICS,
-                status=OutboxStatus.PENDING,
-                payload=event.to_payload(),
                 dedup_key=f"user_logout:{session.user_id}:{session.id}",
             )
-            await self._outbox_repo.save(outbox)
+
+            logger.bind(session_id=session_uuid).debug("Deleted session in repo")
 
         await self._tm.run_in_transaction(_txn)
-        logger.bind(session_id=session_uuid).debug("Deleted session in repo")
 
     async def get_user_by_session(self, session_id: str | None) -> UserPublicDTO:
         if not session_id:
