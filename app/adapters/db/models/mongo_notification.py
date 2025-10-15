@@ -11,9 +11,11 @@ def notification_to_document(notification: Notification) -> dict[str, Any]:
         "_id": str(notification.id),
         "user_id": str(notification.user_id),
         "type": notification.type.value,
-        "created_at": notification.created_at,
         "payload": notification.payload,
         "read": notification.read,
+        "source_id": str(notification.source_id) if notification.source_id else None,
+        "created_at": notification.created_at,
+        "updated_at": notification.updated_at,
     }
 
 
@@ -22,7 +24,9 @@ def document_to_notification(doc: dict[str, Any]) -> Notification:
         id=UUID(doc["_id"]),
         user_id=UUID(doc["user_id"]),
         type=NotificationType(doc["type"]),
-        created_at=doc.get("created_at", datetime.now(timezone.utc)),
         payload=doc.get("payload"),
         read=doc.get("read", False),
+        source_id=UUID(doc.get("source_id")) if doc.get("source_id") else None,
+        created_at=doc.get("created_at", datetime.now(timezone.utc)),
+        updated_at=doc.get("updated_at", datetime.now(timezone.utc)),
     )

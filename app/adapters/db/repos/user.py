@@ -15,8 +15,7 @@ class MongoUserRepository:
     async def save(self, user: User) -> User:
         doc = user_to_document(user=user)
         await self._col.replace_one({"_id": doc["_id"]}, doc, upsert=True)
-        saved = await self._col.find_one({"_id": doc["_id"]})
-        return document_to_user(saved)
+        return user
 
     async def get_by_id(self, user_id: UUID) -> User | None:
         doc = await self._col.find_one({"_id": str(user_id)})
