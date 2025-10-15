@@ -9,16 +9,24 @@ from app.domain.ports.password_hasher import PasswordHasherPort
 from app.domain.ports.transaction_manager import TransactionManager
 from app.domain.repos.join_request import JoinRequestRepository
 from app.domain.repos.message import MessageRepository
+from app.domain.repos.notification import NotificationRepository
 from app.domain.repos.outbox_event import OutboxEventRepository
 from app.domain.repos.room import RoomRepository
 from app.domain.repos.room_membership import RoomMembershipRepository
 from app.domain.repos.user import UserRepository
 from app.domain.repos.user_session import UserSessionRepository
+from app.domain.repos.websocket_session import WebSocketSessionRepository
 
 
 @fixture
 def room_repo():
     return AsyncMock(spec=RoomRepository)
+
+
+@fixture
+def ws_session_repo():
+    repo = AsyncMock(spec=WebSocketSessionRepository)
+    return repo
 
 
 @fixture
@@ -44,6 +52,11 @@ def membership_repo():
 @fixture
 def message_repo():
     return AsyncMock(spec=MessageRepository)
+
+
+@fixture
+def notif_repo():
+    return AsyncMock(spec=NotificationRepository)
 
 
 @fixture
