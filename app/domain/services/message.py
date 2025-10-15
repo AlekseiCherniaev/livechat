@@ -5,18 +5,15 @@ import structlog
 
 from app.core.constants import (
     AnalyticsEventType,
-    OutboxMessageType,
-    OutboxStatus,
     BroadcastEventType,
 )
-from app.domain.entities.analytics_event import AnalyticsEvent
 from app.domain.entities.message import Message
-from app.domain.entities.outbox_event import OutboxEvent
 from app.domain.exceptions.message import MessageNotFound, MessagePermissionError
 from app.domain.ports.connection import ConnectionPort
 from app.domain.ports.transaction_manager import TransactionManager
 from app.domain.repos.message import MessageRepository
 from app.domain.repos.outbox_event import OutboxEventRepository
+from app.domain.services.utils import create_outbox_analytics_event
 
 logger = structlog.get_logger(__name__)
 
@@ -33,28 +30,6 @@ class MessageService:
         self._connection_port = connection_port
         self._outbox_repo = outbox_repo
         self._tm = transaction_manager
-
-    async def _create_outbox_event(
-        self,
-        event_type: AnalyticsEventType,
-        user_id: UUID,
-        room_id: UUID,
-        payload: dict,
-        dedup_key: str,
-    ) -> None:
-        analytics = AnalyticsEvent(
-            event_type=event_type,
-            user_id=user_id,
-            room_id=room_id,
-            payload=payload,
-        )
-        outbox = OutboxEvent(
-            type=OutboxMessageType.ANALYTICS,
-            status=OutboxStatus.PENDING,
-            payload=analytics.to_payload(),
-            dedup_key=dedup_key,
-        )
-        await self._outbox_repo.save(outbox)
 
     async def send_message(self, room_id: UUID, user_id: UUID, content: str) -> None:
         async def _txn():
@@ -78,13 +53,15 @@ class MessageService:
                 payload=payload,
             )
 
-            await self._create_outbox_event(
+            await create_outbox_analytics_event(
+                outbox_repo=self._outbox_repo,
                 event_type=AnalyticsEventType.MESSAGE_SENT,
                 user_id=user_id,
                 room_id=room_id,
                 payload={"message": content},
                 dedup_key=f"message_sent:{message.id}",
             )
+
             logger.bind(message_id=message.id, room_id=room_id, user_id=user_id).info(
                 "Message sent"
             )
@@ -119,7 +96,8 @@ class MessageService:
                 payload=payload,
             )
 
-            await self._create_outbox_event(
+            await create_outbox_analytics_event(
+                outbox_repo=self._outbox_repo,
                 event_type=AnalyticsEventType.MESSAGE_EDITED,
                 user_id=user_id,
                 room_id=message.room_id,
@@ -153,7 +131,8 @@ class MessageService:
                 payload=payload,
             )
 
-            await self._create_outbox_event(
+            await create_outbox_analytics_event(
+                outbox_repo=self._outbox_repo,
                 event_type=AnalyticsEventType.MESSAGE_DELETED,
                 user_id=user_id,
                 room_id=message.room_id,
