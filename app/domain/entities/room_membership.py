@@ -11,4 +11,3 @@ class RoomMembership:
     user_id: UUID
     role: RoomRole
     joined_at: datetime
-    last_active_at: datetime

@@ -358,7 +358,6 @@ class RoomService:
             user_id=user_id,
             role=role,
             joined_at=datetime.now(timezone.utc),
-            last_active_at=datetime.now(timezone.utc),
         )
         await self._membership_repo.save(room_membership=room_membership)
         await self._room_repo.add_participant(room_id=room_id, user_id=user_id)
