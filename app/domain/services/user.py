@@ -131,6 +131,22 @@ class UserService:
 
         await self._tm.run_in_transaction(_txn)
 
+    async def delete_user(self, user_id: UUID) -> None:
+        async def _txn():
+            await self._session_repo.delete_by_user_id(user_id=user_id)
+            await self._user_repo.delete_by_id(user_id=user_id)
+
+            await create_outbox_analytics_event(
+                outbox_repo=self._outbox_repo,
+                event_type=AnalyticsEventType.USER_DELETED,
+                user_id=user_id,
+                dedup_key=f"user_delete:{user_id}",
+            )
+
+            logger.bind(session_id=user_id).debug("Deleted user in repo")
+
+        await self._tm.run_in_transaction(_txn)
+
     async def get_user_by_session(self, session_id: str | None) -> UserPublicDTO:
         if not session_id:
             raise SessionNotFound

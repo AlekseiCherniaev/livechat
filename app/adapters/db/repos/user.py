@@ -1,8 +1,7 @@
 from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
-from dateutil import parser
-from pymongo import ASCENDING
+
 from pymongo.asynchronous.database import AsyncDatabase
 
 from app.adapters.db.models.mongo_user import document_to_user, user_to_document
@@ -13,6 +12,12 @@ class MongoUserRepository:
     def __init__(self, db: AsyncDatabase[Any]) -> None:
         self._col = db["users"]
 
+    async def save(self, user: User) -> User:
+        doc = user_to_document(user=user)
+        await self._col.replace_one({"_id": doc["_id"]}, doc, upsert=True)
+        saved = await self._col.find_one({"_id": doc["_id"]})
+        return document_to_user(saved)
+
     async def get_by_id(self, user_id: UUID) -> User | None:
         doc = await self._col.find_one({"_id": str(user_id)})
         return document_to_user(doc=doc) if doc else None
@@ -20,11 +25,6 @@ class MongoUserRepository:
     async def get_by_username(self, username: str) -> User | None:
         doc = await self._col.find_one({"username": username})
         return document_to_user(doc=doc) if doc else None
-
-    async def save(self, user: User) -> User:
-        doc = user_to_document(user=user)
-        await self._col.replace_one({"_id": doc["_id"]}, doc, upsert=True)
-        return user
 
     async def update_last_active(self, user_id: UUID) -> None:
         now = datetime.now(timezone.utc)
@@ -38,14 +38,3 @@ class MongoUserRepository:
     async def exists(self, username: str) -> bool:
         doc = await self._col.find_one({"username": username}, {"_id": 1})
         return doc is not None
-
-    async def list_users(self, limit: int = 50, offset: int = 0) -> list[User]:
-        cursor = (
-            self._col.find().sort("created_at", ASCENDING).skip(offset).limit(limit)
-        )
-        return [document_to_user(doc) async for doc in cursor]
-
-    async def find_active_since(self, ts_iso: str) -> list[User]:
-        ts = parser.isoparse(ts_iso)
-        cursor = self._col.find({"last_active_at": {"$gte": ts}})
-        return [document_to_user(doc) async for doc in cursor]
