@@ -43,6 +43,7 @@ class UserService:
         return UserPublicDTO(
             username=user.username,
             last_login_at=user.last_login_at,
+            last_active=user.last_active,
             created_at=user.created_at,
             updated_at=user.updated_at,
             id=user.id,
@@ -77,6 +78,7 @@ class UserService:
 
         async def _txn():
             user.last_login_at = datetime.now(timezone.utc)
+            user.last_active = datetime.now(timezone.utc)
             await self._user_repo.save(user)
 
             session = UserSession(
@@ -116,6 +118,7 @@ class UserService:
 
         async def _txn():
             await self._session_repo.delete_by_id(session_id=session_uuid)
+            await self._user_repo.update_last_active(session.user_id)
 
             await create_outbox_analytics_event(
                 outbox_repo=self._outbox_repo,

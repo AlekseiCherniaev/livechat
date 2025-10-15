@@ -13,6 +13,7 @@ class UserAuthDTO:
 class UserPublicDTO:
     username: str
     last_login_at: datetime | None
+    last_active: datetime | None
     created_at: datetime
     updated_at: datetime
     id: UUID
