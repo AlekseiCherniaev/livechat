@@ -40,7 +40,7 @@ class RedisWebSocketSessionRepository:
         )
         await self._redis.expire(self._user_sessions_key(session.user_id), self._ttl)
 
-    async def get(self, session_id: UUID) -> WebSocketSession | None:
+    async def get_by_id(self, session_id: UUID) -> WebSocketSession | None:
         raw = await self._redis.get(self._session_key(session_id))
         if not raw:
             return None
@@ -49,11 +49,13 @@ class RedisWebSocketSessionRepository:
 
     async def list_by_user_id(self, user_id: UUID) -> list[WebSocketSession]:
         session_ids = await self._redis.smembers(self._user_sessions_key(user_id))  # type: ignore[misc]
-        sessions = await asyncio.gather(*(self.get(UUID(sid)) for sid in session_ids))
+        sessions = await asyncio.gather(
+            *(self.get_by_id(UUID(sid)) for sid in session_ids)
+        )
         return [s for s in sessions if s]
 
     async def delete_by_id(self, session_id: UUID) -> None:
-        session = await self.get(session_id)
+        session = await self.get_by_id(session_id)
         if session:
             await self._redis.srem(  # type: ignore[misc]
                 self._user_sessions_key(session.user_id), str(session_id)

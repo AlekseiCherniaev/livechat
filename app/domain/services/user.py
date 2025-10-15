@@ -15,6 +15,7 @@ from app.domain.exceptions.user import (
 )
 from app.domain.ports.password_hasher import PasswordHasherPort
 from app.domain.ports.transaction_manager import TransactionManager
+from app.domain.repos.notification import NotificationRepository
 from app.domain.repos.outbox_event import OutboxEventRepository
 from app.domain.repos.user_session import UserSessionRepository
 from app.domain.repos.user import UserRepository
@@ -30,6 +31,7 @@ class UserService:
         user_repo: UserRepository,
         session_repo: UserSessionRepository,
         ws_session_repo: WebSocketSessionRepository,
+        notif_repo: NotificationRepository,
         outbox_repo: OutboxEventRepository,
         password_hasher_port: PasswordHasherPort,
         transaction_manager: TransactionManager,
@@ -37,6 +39,7 @@ class UserService:
         self._user_repo = user_repo
         self._session_repo = session_repo
         self._ws_session_repo = ws_session_repo
+        self._notif_repo = notif_repo
         self._outbox_repo = outbox_repo
         self._password_hasher = password_hasher_port
         self._tm = transaction_manager
@@ -115,7 +118,7 @@ class UserService:
         except ValueError:
             raise InvalidSession
 
-        session = await self._session_repo.get(session_uuid)
+        session = await self._session_repo.get_by_id(session_id=session_uuid)
         if not session:
             raise SessionNotFound
 
@@ -139,6 +142,7 @@ class UserService:
         async def _txn():
             await self._session_repo.delete_by_user_id(user_id=user_id)
             await self._ws_session_repo.delete_by_user_id(user_id=user_id)
+            await self._notif_repo.delete_by_user_id(user_id=user_id)
             await self._user_repo.delete_by_id(user_id=user_id)
 
             await create_outbox_analytics_event(
@@ -161,7 +165,7 @@ class UserService:
         except ValueError:
             raise InvalidSession
 
-        session = await self._session_repo.get(session_id=session_uuid)
+        session = await self._session_repo.get_by_id(session_id=session_uuid)
         if not session:
             raise SessionNotFound
 

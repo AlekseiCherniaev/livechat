@@ -51,7 +51,7 @@ class WebSocketService:
         await self._tm.run_in_transaction(_txn)
 
     async def disconnect(self, session_id: UUID) -> None:
-        session = await self._ws_session_repo.get(session_id)
+        session = await self._ws_session_repo.get_by_id(session_id=session_id)
         if not session:
             logger.debug("Disconnect called for unknown session", session_id=session_id)
             return
@@ -88,7 +88,7 @@ class WebSocketService:
         )
 
     async def update_ping(self, session_id: UUID) -> None:
-        session = await self._ws_session_repo.get(session_id)
+        session = await self._ws_session_repo.get_by_id(session_id)
         if session is None:
             raise WebSocketSessionNotFound
 

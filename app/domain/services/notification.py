@@ -36,7 +36,7 @@ class NotificationService:
         return notifications
 
     async def mark_as_read(self, notification_id: UUID) -> None:
-        notification = await self._notif_repo.get(notification_id=notification_id)
+        notification = await self._notif_repo.get_by_id(notification_id=notification_id)
         if notification is None:
             raise NotificationNotFound
 

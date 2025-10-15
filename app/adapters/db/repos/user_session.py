@@ -33,7 +33,7 @@ class RedisSessionRepository:
         )
         await self._redis.expire(self._user_sessions_key(session.user_id), self._ttl)
 
-    async def get(self, session_id: UUID) -> UserSession | None:
+    async def get_by_id(self, session_id: UUID) -> UserSession | None:
         raw = await self._redis.get(name=self._session_key(session_id))
         if not raw:
             return None
@@ -41,7 +41,7 @@ class RedisSessionRepository:
         return dict_to_session(dict_session=data)
 
     async def delete_by_id(self, session_id: UUID) -> None:
-        session = await self.get(session_id)
+        session = await self.get_by_id(session_id)
         if session:
             await self._redis.srem(  # type: ignore[misc]
                 self._user_sessions_key(session.user_id), str(session_id)
