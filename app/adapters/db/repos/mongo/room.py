@@ -5,7 +5,7 @@ from uuid import UUID
 from pymongo import DESCENDING
 from pymongo.asynchronous.database import AsyncDatabase
 
-from app.adapters.db.models.mongo_room import (
+from app.adapters.db.models.mongo.room import (
     room_to_document,
     document_to_room,
 )

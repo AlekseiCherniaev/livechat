@@ -5,7 +5,7 @@ import orjson
 from uuid import UUID
 from redis.asyncio import Redis
 
-from app.adapters.db.models.redis_websocker_session import (
+from app.adapters.db.models.redis.websocker_session import (
     session_to_dict,
     dict_to_session,
 )

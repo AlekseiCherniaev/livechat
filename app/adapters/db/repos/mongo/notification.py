@@ -5,7 +5,7 @@ from uuid import UUID
 from pymongo import DESCENDING
 from pymongo.asynchronous.database import AsyncDatabase
 
-from app.adapters.db.models.mongo_notification import (
+from app.adapters.db.models.mongo.notification import (
     document_to_notification,
     notification_to_document,
 )

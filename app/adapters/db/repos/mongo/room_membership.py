@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pymongo.asynchronous.database import AsyncDatabase
 
-from app.adapters.db.models.mongo_room_membership import (
+from app.adapters.db.models.mongo.room_membership import (
     room_membership_to_document,
 )
 from app.domain.dtos.room import RoomPublicDTO, room_to_dto

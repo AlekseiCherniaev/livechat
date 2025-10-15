@@ -1,7 +1,7 @@
 import asyncio
 from uuid import UUID
 
-from app.adapters.db.models.cassandra_message import (
+from app.adapters.db.models.cassandra.message import (
     MessageModel,
     MessageByUserModel,
     MessageByIdModel,

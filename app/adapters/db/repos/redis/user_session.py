@@ -3,7 +3,7 @@ from uuid import UUID
 import orjson
 from redis.asyncio import Redis
 
-from app.adapters.db.models.redis_user_session import dict_to_session, session_to_dict
+from app.adapters.db.models.redis.user_session import dict_to_session, session_to_dict
 from app.core.settings import get_settings
 from app.domain.entities.user_session import UserSession
 

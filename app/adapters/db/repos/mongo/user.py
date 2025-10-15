@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pymongo.asynchronous.database import AsyncDatabase
 
-from app.adapters.db.models.mongo_user import document_to_user, user_to_document
+from app.adapters.db.models.mongo.user import document_to_user, user_to_document
 from app.domain.entities.user import User
 
 
