@@ -65,29 +65,24 @@ class TestUsersAPI:
     async def test_full_flow(self, async_client: AsyncClient):
         payload = {"username": "grace", "password": "secret"}
 
-        # register
         reg_resp = await async_client.post("/api/users/register", json=payload)
         assert reg_resp.status_code == 200
 
-        # login
         login_resp = await async_client.post("/api/users/login", json=payload)
         assert login_resp.status_code == 200
         session_id = login_resp.cookies["session_id"]
 
-        # me
         me_resp = await async_client.get(
             "/api/users/me", cookies={"session_id": session_id}
         )
         assert me_resp.status_code == 200
         assert me_resp.json()["username"] == "grace"
 
-        # logout
         logout_resp = await async_client.post(
             "/api/users/logout", cookies={"session_id": session_id}
         )
         assert logout_resp.status_code == 200
 
-        # me after logout should fail
         me_after_logout = await async_client.get(
             "/api/users/me", cookies={"session_id": session_id}
         )

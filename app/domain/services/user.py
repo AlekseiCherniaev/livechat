@@ -43,7 +43,6 @@ class UserService:
     def _user_to_dto(user: User) -> UserPublicDTO:
         return UserPublicDTO(
             username=user.username,
-            last_active_at=user.last_active_at,
             last_login_at=user.last_login_at,
             created_at=user.created_at,
             updated_at=user.updated_at,
@@ -62,15 +61,14 @@ class UserService:
             event = AnalyticsEvent(
                 event_type=AnalyticsEventType.USER_REGISTERED,
                 user_id=user.id,
-                room_id=None,
             )
-            out_event = OutboxEvent(
+            outbox = OutboxEvent(
                 type=OutboxMessageType.ANALYTICS,
                 status=OutboxStatus.PENDING,
                 payload=event.to_payload(),
                 dedup_key=f"user_register:{user.id}",
             )
-            await self._outbox_repo.save(out_event)
+            await self._outbox_repo.save(outbox)
 
             return user
 
@@ -98,15 +96,14 @@ class UserService:
             event = AnalyticsEvent(
                 event_type=AnalyticsEventType.USER_LOGGED_IN,
                 user_id=user.id,
-                room_id=None,
             )
-            out_event = OutboxEvent(
+            outbox = OutboxEvent(
                 type=OutboxMessageType.ANALYTICS,
                 status=OutboxStatus.PENDING,
                 payload=event.to_payload(),
                 dedup_key=f"user_login:{user.id}:{session.connected_at.timestamp()}",
             )
-            await self._outbox_repo.save(out_event)
+            await self._outbox_repo.save(outbox)
 
             return session
 
@@ -136,15 +133,14 @@ class UserService:
             event = AnalyticsEvent(
                 event_type=AnalyticsEventType.USER_LOGGED_OUT,
                 user_id=session.user_id,
-                room_id=None,
             )
-            out_event = OutboxEvent(
+            outbox = OutboxEvent(
                 type=OutboxMessageType.ANALYTICS,
                 status=OutboxStatus.PENDING,
                 payload=event.to_payload(),
                 dedup_key=f"user_logout:{session.user_id}:{session.id}",
             )
-            await self._outbox_repo.save(out_event)
+            await self._outbox_repo.save(outbox)
 
         await self._tm.run_in_transaction(_txn)
         logger.bind(session_id=session_uuid).debug("Deleted session in repo")
