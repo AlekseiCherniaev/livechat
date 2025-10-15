@@ -1,8 +1,8 @@
-import asyncio
 from uuid import UUID
 
 import orjson
 from redis.asyncio import Redis
+
 from app.adapters.db.models.redis_user_session import dict_to_session, session_to_dict
 from app.core.settings import get_settings
 from app.domain.entities.user_session import UserSession
@@ -39,15 +39,6 @@ class RedisSessionRepository:
             return None
         data = orjson.loads(raw)
         return dict_to_session(dict_session=data)
-
-    async def list_by_user_id(self, user_id: UUID) -> list[UserSession]:
-        session_ids = await self._redis.smembers(self._user_sessions_key(user_id))  # type: ignore[misc]
-        sessions = await asyncio.gather(*(self.get(UUID(sid)) for sid in session_ids))
-        return [session for session in sessions if session]
-
-    async def update(self, session: UserSession) -> None:
-        # just re-save, overwriting old TTL
-        await self.save(session)
 
     async def delete_by_id(self, session_id: UUID) -> None:
         session = await self.get(session_id)
