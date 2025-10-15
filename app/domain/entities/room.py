@@ -5,7 +5,7 @@ from uuid import uuid4, UUID
 
 
 @dataclass
-class ChatRoom:
+class Room:
     name: str
     description: str | None
     is_public: bool

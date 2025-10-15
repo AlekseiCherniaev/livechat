@@ -4,7 +4,7 @@ from uuid import UUID
 
 
 @dataclass
-class ChatRoomCreateDTO:
+class RoomCreateDTO:
     name: str
     description: str | None
     is_public: bool
@@ -12,13 +12,13 @@ class ChatRoomCreateDTO:
 
 
 @dataclass
-class ChatRoomUpdateDTO:
+class RoomUpdateDTO:
     description: str | None = None
     is_public: bool | None = None
 
 
 @dataclass
-class ChatRoomPublicDTO:
+class RoomPublicDTO:
     name: str
     description: str | None
     is_public: bool
