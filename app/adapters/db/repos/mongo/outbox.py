@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
@@ -31,8 +31,8 @@ class MongoOutboxRepository:
         )
         return [document_to_outbox(doc) async for doc in cursor]
 
-    async def mark_in_progress(self, outbox_id: UUID) -> bool:
-        result = await self._col.update_one(
+    async def mark_in_progress(self, outbox_id: UUID) -> None:
+        await self._col.update_one(
             {
                 "_id": str(outbox_id),
                 "status": OutboxStatus.PENDING.value,
@@ -43,7 +43,6 @@ class MongoOutboxRepository:
                 }
             },
         )
-        return result.modified_count == 1
 
     async def mark_sent(self, outbox_id: UUID, sent_at: datetime) -> None:
         await self._col.update_one(
