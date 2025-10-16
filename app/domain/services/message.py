@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Any
 from uuid import UUID
 
 import structlog
@@ -7,12 +8,15 @@ from app.core.constants import (
     AnalyticsEventType,
     BroadcastEventType,
 )
+from app.domain.entities.event_payload import EventPayload
 from app.domain.entities.message import Message
 from app.domain.exceptions.message import MessageNotFound, MessagePermissionError
+from app.domain.exceptions.user import UserNotFound
 from app.domain.ports.connection import ConnectionPort
 from app.domain.ports.transaction_manager import TransactionManager
 from app.domain.repos.message import MessageRepository
 from app.domain.repos.outbox import OutboxRepository
+from app.domain.repos.user import UserRepository
 from app.domain.services.utils import create_outbox_analytics_event
 
 logger = structlog.get_logger(__name__)
@@ -22,36 +26,30 @@ class MessageService:
     def __init__(
         self,
         message_repo: MessageRepository,
+        user_repo: UserRepository,
         connection_port: ConnectionPort,
         outbox_repo: OutboxRepository,
         transaction_manager: TransactionManager,
     ):
         self._message_repo = message_repo
+        self._user_repo = user_repo
         self._connection_port = connection_port
         self._outbox_repo = outbox_repo
         self._tm = transaction_manager
 
     async def send_message(self, room_id: UUID, user_id: UUID, content: str) -> None:
-        async def _txn():
+        user = await self._user_repo.get_by_id(user_id=user_id)
+        if user is None:
+            raise UserNotFound
+
+        async def _txn(db_session: Any):
             message = Message(
                 room_id=room_id,
                 user_id=user_id,
                 content=content,
                 timestamp=datetime.now(timezone.utc),
             )
-            await self._message_repo.save(message=message)
-
-            payload = {
-                "id": str(message.id),
-                "user_id": str(user_id),
-                "content": message.content,
-                "timestamp": message.timestamp.isoformat(),
-            }
-            await self._connection_port.broadcast_event(
-                room_id=room_id,
-                event_type=BroadcastEventType.MESSAGE_CREATED,
-                payload=payload,
-            )
+            await self._message_repo.save(message=message, db_session=db_session)
 
             await create_outbox_analytics_event(
                 outbox_repo=self._outbox_repo,
@@ -60,17 +58,34 @@ class MessageService:
                 room_id=room_id,
                 payload={"message": content},
                 dedup_key=f"message_sent:{message.id}",
+                db_session=db_session,
             )
 
             logger.bind(message_id=message.id, room_id=room_id, user_id=user_id).info(
                 "Message sent"
             )
+            return message
 
-        await self._tm.run_in_transaction(_txn)
+        message_create = await self._tm.run_in_transaction(_txn)
+        payload = EventPayload(
+            user_id=user_id,
+            username=user.username,
+            content=message_create.content,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+        )
+        await self._connection_port.broadcast_event(
+            room_id=room_id,
+            event_type=BroadcastEventType.MESSAGE_CREATED,
+            payload=payload,
+        )
 
     async def edit_message(
         self, message_id: UUID, user_id: UUID, new_content: str
     ) -> None:
+        user = await self._user_repo.get_by_id(user_id=user_id)
+        if user is None:
+            raise UserNotFound
+
         message = await self._message_repo.get_by_id(message_id=message_id)
         if not message:
             raise MessageNotFound
@@ -84,18 +99,6 @@ class MessageService:
             message.updated_at = datetime.now(timezone.utc)
             await self._message_repo.save(message)
 
-            payload = {
-                "id": str(message.id),
-                "user_id": str(user_id),
-                "content": new_content,
-                "timestamp": message.timestamp.isoformat(),
-            }
-            await self._connection_port.broadcast_event(
-                room_id=message.room_id,
-                event_type=BroadcastEventType.MESSAGE_EDITED,
-                payload=payload,
-            )
-
             await create_outbox_analytics_event(
                 outbox_repo=self._outbox_repo,
                 event_type=AnalyticsEventType.MESSAGE_EDITED,
@@ -106,10 +109,26 @@ class MessageService:
             )
 
             logger.bind(message_id=message.id).info("Message edited")
+            return message
 
-        await self._tm.run_in_transaction(_txn)
+        message_update = await self._tm.run_in_transaction(_txn)
+        payload = EventPayload(
+            user_id=user_id,
+            username=user.username,
+            content=message_update.content,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+        )
+        await self._connection_port.broadcast_event(
+            room_id=message.room_id,
+            event_type=BroadcastEventType.MESSAGE_EDITED,
+            payload=payload,
+        )
 
     async def delete_message(self, message_id: UUID, user_id: UUID) -> None:
+        user = await self._user_repo.get_by_id(user_id=user_id)
+        if user is None:
+            raise UserNotFound
+
         message = await self._message_repo.get_by_id(message_id=message_id)
         if not message:
             raise MessageNotFound
@@ -119,17 +138,6 @@ class MessageService:
 
         async def _txn():
             await self._message_repo.delete_by_id(message_id=message_id)
-
-            payload = {
-                "id": str(message.id),
-                "user_id": str(user_id),
-                "timestamp": message.timestamp.isoformat(),
-            }
-            await self._connection_port.broadcast_event(
-                room_id=message.room_id,
-                event_type=BroadcastEventType.MESSAGE_DELETED,
-                payload=payload,
-            )
 
             await create_outbox_analytics_event(
                 outbox_repo=self._outbox_repo,
@@ -143,6 +151,16 @@ class MessageService:
             logger.bind(message_id=message.id).info("Message deleted")
 
         await self._tm.run_in_transaction(_txn)
+        payload = EventPayload(
+            user_id=user_id,
+            username=user.username,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+        )
+        await self._connection_port.broadcast_event(
+            room_id=message.room_id,
+            event_type=BroadcastEventType.MESSAGE_DELETED,
+            payload=payload,
+        )
 
     async def get_recent_messages(
         self, room_id: UUID, limit: int = 50

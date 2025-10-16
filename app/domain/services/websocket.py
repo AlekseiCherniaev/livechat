@@ -5,6 +5,7 @@ from uuid import UUID
 import structlog
 
 from app.core.constants import AnalyticsEventType, BroadcastEventType
+from app.domain.entities.event_payload import EventPayload
 from app.domain.entities.user import User
 from app.domain.entities.websocket_session import WebSocketSession
 from app.domain.exceptions.websocket_session import WebSocketSessionNotFound
@@ -85,13 +86,12 @@ class WebSocketService:
     async def typing_indicator(
         self, room_id: UUID, user_id: UUID, username: str, is_typing: bool
     ) -> None:
-        payload = {
-            "type": "user_typing",
-            "user_id": str(user_id),
-            "username": username,
-            "is_typing": is_typing,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        }
+        payload = EventPayload(
+            user_id=user_id,
+            username=username,
+            is_typing=is_typing,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+        )
         await self._conn.broadcast_event(
             room_id=room_id, event_type=BroadcastEventType.USER_TYPING, payload=payload
         )
