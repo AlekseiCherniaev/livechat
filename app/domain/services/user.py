@@ -16,7 +16,7 @@ from app.domain.exceptions.user import (
 from app.domain.ports.password_hasher import PasswordHasherPort
 from app.domain.ports.transaction_manager import TransactionManager
 from app.domain.repos.notification import NotificationRepository
-from app.domain.repos.outbox_event import OutboxEventRepository
+from app.domain.repos.outbox import OutboxRepository
 from app.domain.repos.user_session import UserSessionRepository
 from app.domain.repos.user import UserRepository
 from app.domain.repos.websocket_session import WebSocketSessionRepository
@@ -32,7 +32,7 @@ class UserService:
         session_repo: UserSessionRepository,
         ws_session_repo: WebSocketSessionRepository,
         notif_repo: NotificationRepository,
-        outbox_repo: OutboxEventRepository,
+        outbox_repo: OutboxRepository,
         password_hasher_port: PasswordHasherPort,
         transaction_manager: TransactionManager,
     ) -> None:

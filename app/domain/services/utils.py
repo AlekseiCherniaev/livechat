@@ -8,12 +8,12 @@ from app.core.constants import (
 )
 from app.domain.entities.analytics_event import AnalyticsEvent
 from app.domain.entities.notification import Notification
-from app.domain.entities.outbox_event import OutboxEvent
-from app.domain.repos.outbox_event import OutboxEventRepository
+from app.domain.entities.outbox import Outbox
+from app.domain.repos.outbox import OutboxRepository
 
 
 async def create_outbox_analytics_event(
-    outbox_repo: OutboxEventRepository,
+    outbox_repo: OutboxRepository,
     event_type: AnalyticsEventType,
     user_id: UUID | None = None,
     room_id: UUID | None = None,
@@ -26,7 +26,7 @@ async def create_outbox_analytics_event(
         room_id=room_id,
         payload=payload,
     )
-    outbox = OutboxEvent(
+    outbox = Outbox(
         type=OutboxMessageType.ANALYTICS,
         status=OutboxStatus.PENDING,
         payload=analytics.to_payload(),
@@ -36,7 +36,7 @@ async def create_outbox_analytics_event(
 
 
 async def create_outbox_notification_event(
-    outbox_repo: OutboxEventRepository,
+    outbox_repo: OutboxRepository,
     notification_type: NotificationType,
     user_id: UUID,
     source_id: UUID | None = None,
@@ -49,7 +49,7 @@ async def create_outbox_notification_event(
         payload=payload,
         source_id=source_id,
     )
-    notif_out = OutboxEvent(
+    notif_out = Outbox(
         type=OutboxMessageType.NOTIFICATION,
         status=OutboxStatus.PENDING,
         payload=notif.to_payload(),

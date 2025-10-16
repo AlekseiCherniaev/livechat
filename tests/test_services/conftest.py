@@ -10,7 +10,7 @@ from app.domain.ports.transaction_manager import TransactionManager
 from app.domain.repos.join_request import JoinRequestRepository
 from app.domain.repos.message import MessageRepository
 from app.domain.repos.notification import NotificationRepository
-from app.domain.repos.outbox_event import OutboxEventRepository
+from app.domain.repos.outbox import OutboxRepository
 from app.domain.repos.room import RoomRepository
 from app.domain.repos.room_membership import RoomMembershipRepository
 from app.domain.repos.user import UserRepository
@@ -61,7 +61,7 @@ def notif_repo():
 
 @fixture
 def outbox_repo():
-    return AsyncMock(spec=OutboxEventRepository)
+    return AsyncMock(spec=OutboxRepository)
 
 
 @fixture

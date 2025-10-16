@@ -33,7 +33,7 @@ from app.domain.exceptions.user import UserNotFound
 from app.domain.ports.analytics import AnalyticsPort
 from app.domain.ports.transaction_manager import TransactionManager
 from app.domain.repos.join_request import JoinRequestRepository
-from app.domain.repos.outbox_event import OutboxEventRepository
+from app.domain.repos.outbox import OutboxRepository
 from app.domain.repos.room import RoomRepository
 from app.domain.repos.room_membership import RoomMembershipRepository
 from app.domain.repos.user import UserRepository
@@ -52,7 +52,7 @@ class RoomService:
         user_repo: UserRepository,
         join_repo: JoinRequestRepository,
         membership_repo: RoomMembershipRepository,
-        outbox_repo: OutboxEventRepository,
+        outbox_repo: OutboxRepository,
         analytics_port: AnalyticsPort,
         transaction_manager: TransactionManager,
     ):

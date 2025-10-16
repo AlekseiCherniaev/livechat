@@ -9,7 +9,7 @@ from app.domain.entities.websocket_session import WebSocketSession
 from app.domain.exceptions.websocket_session import WebSocketSessionNotFound
 from app.domain.ports.connection import ConnectionPort
 from app.domain.ports.transaction_manager import TransactionManager
-from app.domain.repos.outbox_event import OutboxEventRepository
+from app.domain.repos.outbox import OutboxRepository
 from app.domain.repos.user import UserRepository
 from app.domain.repos.websocket_session import WebSocketSessionRepository
 from app.domain.services.utils import create_outbox_analytics_event
@@ -22,7 +22,7 @@ class WebSocketService:
         self,
         ws_session_repo: WebSocketSessionRepository,
         user_repo: UserRepository,
-        outbox_repo: OutboxEventRepository,
+        outbox_repo: OutboxRepository,
         connection_port: ConnectionPort,
         transaction_manager: TransactionManager,
     ):

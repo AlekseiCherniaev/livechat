@@ -16,7 +16,7 @@ class AnalyticsEvent:
     created_at: datetime = field(default_factory=partial(datetime.now, timezone.utc))
     id: UUID = field(default_factory=uuid4)
 
-    def to_payload(self) -> dict[str, str | Any]:
+    def to_payload(self) -> dict[str, Any]:
         return {
             "event_type": self.event_type.value,
             "user_id": str(self.user_id) if self.user_id else None,

@@ -12,7 +12,7 @@ from app.domain.exceptions.message import MessageNotFound, MessagePermissionErro
 from app.domain.ports.connection import ConnectionPort
 from app.domain.ports.transaction_manager import TransactionManager
 from app.domain.repos.message import MessageRepository
-from app.domain.repos.outbox_event import OutboxEventRepository
+from app.domain.repos.outbox import OutboxRepository
 from app.domain.services.utils import create_outbox_analytics_event
 
 logger = structlog.get_logger(__name__)
@@ -23,7 +23,7 @@ class MessageService:
         self,
         message_repo: MessageRepository,
         connection_port: ConnectionPort,
-        outbox_repo: OutboxEventRepository,
+        outbox_repo: OutboxRepository,
         transaction_manager: TransactionManager,
     ):
         self._message_repo = message_repo

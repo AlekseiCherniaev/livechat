@@ -7,7 +7,7 @@ from app.domain.entities.notification import Notification
 from app.domain.exceptions.notification import NotificationNotFound
 from app.domain.ports.transaction_manager import TransactionManager
 from app.domain.repos.notification import NotificationRepository
-from app.domain.repos.outbox_event import OutboxEventRepository
+from app.domain.repos.outbox import OutboxRepository
 from app.domain.services.utils import create_outbox_analytics_event
 
 logger = structlog.get_logger(__name__)
@@ -17,7 +17,7 @@ class NotificationService:
     def __init__(
         self,
         notification_repo: NotificationRepository,
-        outbox_repo: OutboxEventRepository,
+        outbox_repo: OutboxRepository,
         transaction_manager: TransactionManager,
     ) -> None:
         self._notif_repo = notification_repo

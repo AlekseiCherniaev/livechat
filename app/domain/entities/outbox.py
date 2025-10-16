@@ -7,7 +7,7 @@ from app.core.constants import OutboxMessageType, OutboxStatus
 
 
 @dataclass
-class OutboxEvent:
+class Outbox:
     type: OutboxMessageType
     status: OutboxStatus
     payload: dict[str, Any]
