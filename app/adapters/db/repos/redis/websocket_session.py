@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime, timezone
+from typing import Any
 
 import orjson
 from uuid import UUID
@@ -28,7 +29,9 @@ class RedisWebSocketSessionRepository:
     def _user_sessions_key(user_id: UUID) -> str:
         return f"user_ws_sessions:{user_id}"
 
-    async def save(self, session: WebSocketSession) -> None:
+    async def save(
+        self, session: WebSocketSession, db_session: Any | None = None
+    ) -> None:
         data = session_to_dict(session)
         await self._redis.set(
             name=self._session_key(session.id),
@@ -40,21 +43,27 @@ class RedisWebSocketSessionRepository:
         )
         await self._redis.expire(self._user_sessions_key(session.user_id), self._ttl)
 
-    async def get_by_id(self, session_id: UUID) -> WebSocketSession | None:
+    async def get_by_id(
+        self, session_id: UUID, db_session: Any | None = None
+    ) -> WebSocketSession | None:
         raw = await self._redis.get(self._session_key(session_id))
         if not raw:
             return None
 
         return dict_to_session(orjson.loads(raw))
 
-    async def list_by_user_id(self, user_id: UUID) -> list[WebSocketSession]:
+    async def list_by_user_id(
+        self, user_id: UUID, db_session: Any | None = None
+    ) -> list[WebSocketSession]:
         session_ids = await self._redis.smembers(self._user_sessions_key(user_id))  # type: ignore[misc]
         sessions = await asyncio.gather(
             *(self.get_by_id(UUID(sid)) for sid in session_ids)
         )
         return [s for s in sessions if s]
 
-    async def delete_by_id(self, session_id: UUID) -> None:
+    async def delete_by_id(
+        self, session_id: UUID, db_session: Any | None = None
+    ) -> None:
         session = await self.get_by_id(session_id)
         if session:
             await self._redis.srem(  # type: ignore[misc]
@@ -62,13 +71,15 @@ class RedisWebSocketSessionRepository:
             )
         await self._redis.delete(self._session_key(session_id))
 
-    async def delete_by_user_id(self, user_id: UUID) -> None:
+    async def delete_by_user_id(
+        self, user_id: UUID, db_session: Any | None = None
+    ) -> None:
         session_ids = await self._redis.smembers(self._user_sessions_key(user_id))  # type: ignore[misc]
         if session_ids:
             await self._redis.delete(*(self._session_key(UUID(s)) for s in session_ids))
         await self._redis.delete(self._user_sessions_key(user_id))
 
-    async def count_by_room(self, room_id: UUID) -> int:
+    async def count_by_room(self, room_id: UUID, db_session: Any | None = None) -> int:
         pattern = "ws_session:*"
         count = 0
         async for key in self._redis.scan_iter(match=pattern):
@@ -80,7 +91,9 @@ class RedisWebSocketSessionRepository:
                 count += 1
         return count
 
-    async def update_last_ping(self, session_id: UUID) -> None:
+    async def update_last_ping(
+        self, session_id: UUID, db_session: Any | None = None
+    ) -> None:
         raw = await self._redis.get(self._session_key(session_id))
         if not raw:
             return

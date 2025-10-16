@@ -1,3 +1,4 @@
+from typing import Any
 from uuid import UUID
 
 import orjson
@@ -23,7 +24,7 @@ class RedisSessionRepository:
     def _user_sessions_key(user_id: UUID) -> str:
         return f"user_sessions:{user_id}"
 
-    async def save(self, session: UserSession) -> None:
+    async def save(self, session: UserSession, db_session: Any | None = None) -> None:
         data = session_to_dict(session=session)
         await self._redis.set(
             name=self._session_key(data["id"]), value=orjson.dumps(data), ex=self._ttl
@@ -33,14 +34,18 @@ class RedisSessionRepository:
         )
         await self._redis.expire(self._user_sessions_key(session.user_id), self._ttl)
 
-    async def get_by_id(self, session_id: UUID) -> UserSession | None:
+    async def get_by_id(
+        self, session_id: UUID, db_session: Any | None = None
+    ) -> UserSession | None:
         raw = await self._redis.get(name=self._session_key(session_id))
         if not raw:
             return None
         data = orjson.loads(raw)
         return dict_to_session(dict_session=data)
 
-    async def delete_by_id(self, session_id: UUID) -> None:
+    async def delete_by_id(
+        self, session_id: UUID, db_session: Any | None = None
+    ) -> None:
         session = await self.get_by_id(session_id)
         if session:
             await self._redis.srem(  # type: ignore[misc]
@@ -48,7 +53,9 @@ class RedisSessionRepository:
             )
         await self._redis.delete(self._session_key(session_id))
 
-    async def delete_by_user_id(self, user_id: UUID) -> None:
+    async def delete_by_user_id(
+        self, user_id: UUID, db_session: Any | None = None
+    ) -> None:
         session_ids = await self._redis.smembers(self._user_sessions_key(user_id))  # type: ignore[misc]
         if session_ids:
             await self._redis.delete(*(self._session_key(UUID(s)) for s in session_ids))
