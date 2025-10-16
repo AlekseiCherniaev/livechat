@@ -47,7 +47,6 @@ class MessageService:
                 room_id=room_id,
                 user_id=user_id,
                 content=content,
-                timestamp=datetime.now(timezone.utc),
             )
             await self._message_repo.save(message=message, db_session=db_session)
 
@@ -166,9 +165,6 @@ class MessageService:
         self, room_id: UUID, limit: int = 50
     ) -> list[Message]:
         return await self._message_repo.get_recent_by_room(room_id=room_id, limit=limit)
-
-    async def get_messages_since(self, room_id: UUID, since: datetime) -> list[Message]:
-        return await self._message_repo.get_since(room_id=room_id, since=since)
 
     async def get_user_messages(self, user_id: UUID, limit: int = 50) -> list[Message]:
         return await self._message_repo.list_by_user(user_id=user_id, limit=limit)

@@ -9,7 +9,6 @@ class Message:
     room_id: UUID
     user_id: UUID
     content: str
-    timestamp: datetime
     edited: bool = False
     created_at: datetime = field(default_factory=partial(datetime.now, timezone.utc))
     updated_at: datetime = field(default_factory=partial(datetime.now, timezone.utc))
