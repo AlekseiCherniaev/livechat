@@ -68,7 +68,7 @@ class UserService:
     async def login_user(self, user_data: UserAuthDTO) -> UUID:
         user = await self._user_repo.get_by_username(username=user_data.username)
         if not user or not self._password_hasher.verify(
-            user_data.password, user.hashed_password
+            password=user_data.password, hashed=user.hashed_password
         ):
             raise UserInvalidCredentials
 
@@ -118,7 +118,7 @@ class UserService:
 
         async def _txn(db_session: Any):
             await self._user_repo.update_last_active(
-                session.user_id, db_session=db_session
+                user_id=session.user_id, db_session=db_session
             )
             await self._session_repo.delete_by_id(
                 session_id=session_uuid, db_session=db_session
