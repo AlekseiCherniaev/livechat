@@ -1,6 +1,7 @@
 from typing import Any
 from uuid import UUID
 
+from pymongo.asynchronous.client_session import AsyncClientSession
 from pymongo.asynchronous.database import AsyncDatabase
 
 from app.adapters.db.models.mongo.room import document_to_room
@@ -19,17 +20,30 @@ class MongoRoomMembershipRepository:
         self._col_users = db["users"]
         self._col_rooms = db["rooms"]
 
-    async def save(self, room_membership: RoomMembership) -> RoomMembership:
+    async def save(
+        self,
+        room_membership: RoomMembership,
+        db_session: AsyncClientSession | None = None,
+    ) -> RoomMembership:
         doc = room_membership_to_document(room_membership)
         await self._col.replace_one(
-            {"room_id": doc["room_id"], "user_id": doc["user_id"]}, doc, upsert=True
+            {"room_id": doc["room_id"], "user_id": doc["user_id"]},
+            doc,
+            upsert=True,
+            session=db_session,
         )
         return room_membership
 
-    async def delete(self, room_id: UUID, user_id: UUID) -> None:
-        await self._col.delete_one({"room_id": str(room_id), "user_id": str(user_id)})
+    async def delete(
+        self, room_id: UUID, user_id: UUID, db_session: AsyncClientSession | None = None
+    ) -> None:
+        await self._col.delete_one(
+            {"room_id": str(room_id), "user_id": str(user_id)}, session=db_session
+        )
 
-    async def list_users(self, room_id: UUID) -> list[User]:
+    async def list_users(
+        self, room_id: UUID, db_session: AsyncClientSession | None = None
+    ) -> list[User]:
         pipeline = [
             {"$match": {"room_id": str(room_id)}},
             {
@@ -42,11 +56,13 @@ class MongoRoomMembershipRepository:
             },
             {"$unwind": "$user_info"},
         ]
-        cursor = await self._col.aggregate(pipeline)
+        cursor = await self._col.aggregate(pipeline, session=db_session)
 
         return [document_to_user(doc["user_info"]) async for doc in cursor]
 
-    async def list_rooms_for_user(self, user_id: UUID) -> list[Room]:
+    async def list_rooms_for_user(
+        self, user_id: UUID, db_session: AsyncClientSession | None = None
+    ) -> list[Room]:
         pipeline = [
             {"$match": {"user_id": str(user_id)}},
             {
@@ -59,12 +75,16 @@ class MongoRoomMembershipRepository:
             },
             {"$unwind": "$room_info"},
         ]
-        cursor = await self._col.aggregate(pipeline)
+        cursor = await self._col.aggregate(pipeline, session=db_session)
 
         return [document_to_room(doc["room_info"]) async for doc in cursor]
 
-    async def exists(self, room_id: UUID, user_id: UUID) -> bool:
+    async def exists(
+        self, room_id: UUID, user_id: UUID, db_session: AsyncClientSession | None = None
+    ) -> bool:
         doc = await self._col.find_one(
-            {"room_id": str(room_id), "user_id": str(user_id)}, {"_id": 1}
+            {"room_id": str(room_id), "user_id": str(user_id)},
+            {"_id": 1},
+            session=db_session,
         )
         return doc is not None

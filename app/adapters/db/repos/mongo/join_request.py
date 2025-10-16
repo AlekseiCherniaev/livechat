@@ -1,6 +1,7 @@
 from typing import Any
 from uuid import UUID
 
+from pymongo.asynchronous.client_session import AsyncClientSession
 from pymongo.asynchronous.database import AsyncDatabase
 
 from app.adapters.db.models.mongo.join_request import (
@@ -21,20 +22,31 @@ class MongoJoinRequestRepository:
         self._col_users = db["users"]
         self._col_rooms = db["rooms"]
 
-    async def save(self, request: JoinRequest) -> JoinRequest:
+    async def save(
+        self, request: JoinRequest, db_session: AsyncClientSession | None = None
+    ) -> JoinRequest:
         doc = join_request_to_document(request)
-        await self._col.replace_one({"_id": doc["_id"]}, doc, upsert=True)
+        await self._col.replace_one(
+            {"_id": doc["_id"]}, doc, upsert=True, session=db_session
+        )
         return request
 
-    async def get_by_id(self, request_id: UUID) -> JoinRequest | None:
-        doc = await self._col.find_one({"_id": str(request_id)})
+    async def get_by_id(
+        self, request_id: UUID, db_session: AsyncClientSession | None = None
+    ) -> JoinRequest | None:
+        doc = await self._col.find_one({"_id": str(request_id)}, session=db_session)
         return document_to_join_request(doc) if doc else None
 
-    async def delete_by_id(self, request_id: UUID) -> None:
-        await self._col.delete_one({"_id": str(request_id)})
+    async def delete_by_id(
+        self, request_id: UUID, db_session: AsyncClientSession | None = None
+    ) -> None:
+        await self._col.delete_one({"_id": str(request_id)}, session=db_session)
 
     async def list_by_room(
-        self, room_id: UUID, status: JoinRequestStatus
+        self,
+        room_id: UUID,
+        status: JoinRequestStatus,
+        db_session: AsyncClientSession | None = None,
     ) -> list[tuple[JoinRequest, User, Room]]:
         pipeline = [
             {"$match": {"room_id": str(room_id), "status": status.value}},
@@ -58,7 +70,7 @@ class MongoJoinRequestRepository:
             {"$unwind": "$room_info"},
         ]
 
-        cursor = await self._col.aggregate(pipeline)
+        cursor = await self._col.aggregate(pipeline, session=db_session)
 
         return [
             (
@@ -70,7 +82,10 @@ class MongoJoinRequestRepository:
         ]
 
     async def list_by_user(
-        self, user_id: UUID, status: JoinRequestStatus
+        self,
+        user_id: UUID,
+        status: JoinRequestStatus,
+        db_session: AsyncClientSession | None = None,
     ) -> list[tuple[JoinRequest, User, Room]]:
         pipeline = [
             {"$match": {"user_id": str(user_id), "status": status.value}},
@@ -94,7 +109,7 @@ class MongoJoinRequestRepository:
             {"$unwind": "$room_info"},
         ]
 
-        cursor = await self._col.aggregate(pipeline)
+        cursor = await self._col.aggregate(pipeline, session=db_session)
         return [
             (
                 document_to_join_request(doc),
@@ -104,8 +119,12 @@ class MongoJoinRequestRepository:
             async for doc in cursor
         ]
 
-    async def exists(self, room_id: UUID, user_id: UUID) -> bool:
+    async def exists(
+        self, room_id: UUID, user_id: UUID, db_session: AsyncClientSession | None = None
+    ) -> bool:
         doc = await self._col.find_one(
-            {"room_id": str(room_id), "user_id": str(user_id)}, {"_id": 1}
+            {"room_id": str(room_id), "user_id": str(user_id)},
+            {"_id": 1},
+            session=db_session,
         )
         return doc is not None

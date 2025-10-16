@@ -3,6 +3,7 @@ from typing import Any
 from uuid import UUID
 
 from pymongo import DESCENDING
+from pymongo.asynchronous.client_session import AsyncClientSession
 from pymongo.asynchronous.database import AsyncDatabase
 
 from app.adapters.db.models.mongo.notification import (
@@ -17,7 +18,7 @@ class MongoNotificationRepository:
         self._col = db["notifications"]
 
     async def save(
-        self, notification: Notification, db_session: Any | None = None
+        self, notification: Notification, db_session: AsyncClientSession | None = None
     ) -> Notification:
         doc = notification_to_document(notification)
         await self._col.replace_one(
@@ -26,7 +27,7 @@ class MongoNotificationRepository:
         return notification
 
     async def get_by_id(
-        self, notification_id: UUID, db_session: Any | None = None
+        self, notification_id: UUID, db_session: AsyncClientSession | None = None
     ) -> Notification | None:
         doc = await self._col.find_one(
             {"_id": str(notification_id)}, session=db_session
@@ -38,7 +39,7 @@ class MongoNotificationRepository:
         user_id: UUID,
         unread_only: bool,
         limit: int,
-        db_session: Any | None = None,
+        db_session: AsyncClientSession | None = None,
     ) -> list[Notification]:
         query: dict[str, Any] = {"user_id": str(user_id)}
         if unread_only:
@@ -51,17 +52,19 @@ class MongoNotificationRepository:
         return [document_to_notification(doc) async for doc in cursor]
 
     async def delete_by_user_id(
-        self, user_id: UUID, db_session: Any | None = None
+        self, user_id: UUID, db_session: AsyncClientSession | None = None
     ) -> None:
         await self._col.delete_many({"user_id": str(user_id)}, session=db_session)
 
-    async def count_unread(self, user_id: UUID, db_session: Any | None = None) -> int:
+    async def count_unread(
+        self, user_id: UUID, db_session: AsyncClientSession | None = None
+    ) -> int:
         return await self._col.count_documents(
             {"user_id": str(user_id), "read": False}, session=db_session
         )
 
     async def mark_as_read(
-        self, notification_id: UUID, db_session: Any | None = None
+        self, notification_id: UUID, db_session: AsyncClientSession | None = None
     ) -> None:
         await self._col.update_one(
             {"_id": str(notification_id)},
@@ -70,7 +73,7 @@ class MongoNotificationRepository:
         )
 
     async def mark_all_as_read(
-        self, user_id: UUID, db_session: Any | None = None
+        self, user_id: UUID, db_session: AsyncClientSession | None = None
     ) -> None:
         await self._col.update_many(
             {"user_id": str(user_id), "read": False},

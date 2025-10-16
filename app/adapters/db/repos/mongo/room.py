@@ -3,6 +3,7 @@ from typing import Any
 from uuid import UUID
 
 from pymongo import DESCENDING
+from pymongo.asynchronous.client_session import AsyncClientSession
 from pymongo.asynchronous.database import AsyncDatabase
 
 from app.adapters.db.models.mongo.room import (
@@ -16,7 +17,9 @@ class MongoRoomRepository:
     def __init__(self, db: AsyncDatabase[Any]) -> None:
         self._col = db["rooms"]
 
-    async def save(self, room: Room, db_session: Any | None = None) -> Room:
+    async def save(
+        self, room: Room, db_session: AsyncClientSession | None = None
+    ) -> Room:
         doc = room_to_document(room)
         await self._col.replace_one(
             {"_id": doc["_id"]}, doc, upsert=True, session=db_session
@@ -24,13 +27,13 @@ class MongoRoomRepository:
         return room
 
     async def get_by_id(
-        self, room_id: UUID, db_session: Any | None = None
+        self, room_id: UUID, db_session: AsyncClientSession | None = None
     ) -> Room | None:
         doc = await self._col.find_one({"_id": str(room_id)}, session=db_session)
         return document_to_room(doc) if doc else None
 
     async def search(
-        self, query: str, limit: int, db_session: Any | None = None
+        self, query: str, limit: int, db_session: AsyncClientSession | None = None
     ) -> list[Room]:
         regex = {"$regex": query, "$options": "i"}
         cursor = (
@@ -42,11 +45,16 @@ class MongoRoomRepository:
         )
         return [document_to_room(doc) async for doc in cursor]
 
-    async def delete_by_id(self, room_id: UUID, db_session: Any | None = None) -> None:
+    async def delete_by_id(
+        self, room_id: UUID, db_session: AsyncClientSession | None = None
+    ) -> None:
         await self._col.delete_one({"_id": str(room_id)}, session=db_session)
 
     async def list_top_room(
-        self, limit: int, only_public: bool, db_session: Any | None = None
+        self,
+        limit: int,
+        only_public: bool,
+        db_session: AsyncClientSession | None = None,
     ) -> list[Room]:
         query: dict[str, Any] = {}
         if only_public:
@@ -60,7 +68,7 @@ class MongoRoomRepository:
         return [document_to_room(doc) async for doc in cursor]
 
     async def add_participant(
-        self, room_id: UUID, db_session: Any | None = None
+        self, room_id: UUID, db_session: AsyncClientSession | None = None
     ) -> None:
         await self._col.update_one(
             {"_id": str(room_id)},
@@ -72,7 +80,7 @@ class MongoRoomRepository:
         )
 
     async def remove_participant(
-        self, room_id: UUID, db_session: Any | None = None
+        self, room_id: UUID, db_session: AsyncClientSession | None = None
     ) -> None:
         await self._col.update_one(
             {"_id": str(room_id)},
@@ -89,6 +97,8 @@ class MongoRoomRepository:
             session=db_session,
         )
 
-    async def exists(self, name: str, db_session: Any | None = None) -> bool:
+    async def exists(
+        self, name: str, db_session: AsyncClientSession | None = None
+    ) -> bool:
         doc = await self._col.find_one({"name": name}, session=db_session)
         return doc is not None

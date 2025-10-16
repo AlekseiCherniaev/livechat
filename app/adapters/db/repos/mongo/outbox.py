@@ -3,6 +3,7 @@ from typing import Any
 from uuid import UUID
 
 from pymongo import ASCENDING
+from pymongo.asynchronous.client_session import AsyncClientSession
 from pymongo.asynchronous.database import AsyncDatabase
 
 from app.adapters.db.models.mongo.outbox import outbox_to_document, document_to_outbox
@@ -14,24 +15,34 @@ class MongoOutboxRepository:
     def __init__(self, db: AsyncDatabase[Any]) -> None:
         self._col = db["outboxes"]
 
-    async def save(self, outbox: Outbox) -> Outbox:
+    async def save(
+        self, outbox: Outbox, db_session: AsyncClientSession | None = None
+    ) -> Outbox:
         doc = outbox_to_document(outbox)
-        await self._col.replace_one({"_id": doc["_id"]}, doc, upsert=True)
+        await self._col.replace_one(
+            {"_id": doc["_id"]}, doc, upsert=True, session=db_session
+        )
         return outbox
 
-    async def get_by_id(self, outbox_id: UUID) -> Outbox | None:
-        doc = await self._col.find_one({"_id": str(outbox_id)})
+    async def get_by_id(
+        self, outbox_id: UUID, db_session: AsyncClientSession | None = None
+    ) -> Outbox | None:
+        doc = await self._col.find_one({"_id": str(outbox_id)}, session=db_session)
         return document_to_outbox(doc) if doc else None
 
-    async def list_pending(self, limit: int = 100) -> list[Outbox]:
+    async def list_pending(
+        self, limit: int = 100, db_session: AsyncClientSession | None = None
+    ) -> list[Outbox]:
         cursor = (
-            self._col.find({"status": OutboxStatus.PENDING.value})
+            self._col.find({"status": OutboxStatus.PENDING.value}, session=db_session)
             .sort("created_at", ASCENDING)
             .limit(limit)
         )
         return [document_to_outbox(doc) async for doc in cursor]
 
-    async def mark_in_progress(self, outbox_id: UUID) -> None:
+    async def mark_in_progress(
+        self, outbox_id: UUID, db_session: AsyncClientSession | None = None
+    ) -> None:
         await self._col.update_one(
             {
                 "_id": str(outbox_id),
@@ -42,9 +53,15 @@ class MongoOutboxRepository:
                     "status": OutboxStatus.IN_PROGRESS.value,
                 }
             },
+            session=db_session,
         )
 
-    async def mark_sent(self, outbox_id: UUID, sent_at: datetime) -> None:
+    async def mark_sent(
+        self,
+        outbox_id: UUID,
+        sent_at: datetime,
+        db_session: AsyncClientSession | None = None,
+    ) -> None:
         await self._col.update_one(
             {"_id": str(outbox_id)},
             {
@@ -54,9 +71,12 @@ class MongoOutboxRepository:
                     "sent_at": sent_at,
                 }
             },
+            session=db_session,
         )
 
-    async def mark_failed(self, outbox_id: UUID, error: str) -> None:
+    async def mark_failed(
+        self, outbox_id: UUID, error: str, db_session: AsyncClientSession | None = None
+    ) -> None:
         await self._col.update_one(
             {"_id": str(outbox_id)},
             {
@@ -66,7 +86,10 @@ class MongoOutboxRepository:
                 },
                 "$inc": {"retries": 1},
             },
+            session=db_session,
         )
 
-    async def delete_by_id(self, outbox_id: UUID) -> None:
-        await self._col.delete_one({"_id": str(outbox_id)})
+    async def delete_by_id(
+        self, outbox_id: UUID, db_session: AsyncClientSession | None = None
+    ) -> None:
+        await self._col.delete_one({"_id": str(outbox_id)}, session=db_session)
