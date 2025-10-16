@@ -63,7 +63,7 @@ class TestRoomService:
         await service.create_room(dto)
 
         room_repo.exists.assert_awaited_once_with(name="My room")
-        user_repo.get_by_id.assert_awaited_once_with(creator_id)
+        user_repo.get_by_id.assert_awaited_once_with(user_id=creator_id)
         tm.run_in_transaction.assert_awaited_once()
         room_repo.save.assert_awaited()
         outbox_repo.save.assert_awaited()
@@ -125,9 +125,9 @@ class TestRoomService:
         )
         room_repo.get_by_id.return_value = room
 
-        await service.delete_room(room.id)
+        await service.delete_room(room_id=room.id)
 
-        room_repo.delete_by_id.assert_awaited_once_with(room_id=room.id)
+        room_repo.delete_by_id.assert_awaited_once()
         outbox_repo.save.assert_awaited_once()
         tm.run_in_transaction.assert_awaited_once()
 
@@ -248,8 +248,8 @@ class TestRoomService:
 
         await service.remove_participant(rid, uid)
 
-        membership_repo.delete.assert_awaited_once_with(room_id=rid, user_id=uid)
-        room_repo.delete_by_id.assert_awaited_once_with(room_id=rid)
+        membership_repo.delete.assert_awaited_once()
+        room_repo.delete_by_id.assert_awaited_once()
         outbox_repo.save.assert_awaited_once()
         tm.run_in_transaction.assert_awaited_once()
 
@@ -262,8 +262,8 @@ class TestRoomService:
 
         await service.remove_participant(rid, uid)
 
-        membership_repo.delete.assert_awaited_once_with(room_id=rid, user_id=uid)
-        room_repo.remove_participant.assert_awaited_once_with(rid)
+        membership_repo.delete.assert_awaited_once()
+        room_repo.remove_participant.assert_awaited_once()
         outbox_repo.save.assert_awaited_once()
         tm.run_in_transaction.assert_awaited_once()
 

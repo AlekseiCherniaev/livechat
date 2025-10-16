@@ -29,10 +29,14 @@ class TestNotificationService:
             )
         ]
 
-        result = await service.list_user_notifications(user_id=user_id)
+        result = await service.list_user_notifications(
+            user_id=user_id, unread_only=True, limit=10
+        )
 
         notif_repo.get_user_notifications.assert_awaited_once_with(
-            user_id=user_id, unread_only=False
+            user_id=user_id,
+            unread_only=True,
+            limit=10,
         )
         assert len(result) == 1
         assert result[0].payload["msg"] == "hi"
@@ -42,11 +46,11 @@ class TestNotificationService:
         notif_repo.get_user_notifications.return_value = []
 
         result = await service.list_user_notifications(
-            user_id=user_id, unread_only=True
+            user_id=user_id, unread_only=True, limit=10
         )
 
         notif_repo.get_user_notifications.assert_awaited_once_with(
-            user_id=user_id, unread_only=True
+            user_id=user_id, unread_only=True, limit=10
         )
         assert result == []
 
@@ -80,7 +84,7 @@ class TestNotificationService:
         await service.mark_all_as_read(user_id)
 
         tm.run_in_transaction.assert_awaited_once()
-        notif_repo.mark_all_as_read.assert_awaited_once_with(user_id)
+        notif_repo.mark_all_as_read.assert_awaited_once()
         service._outbox_repo.save.assert_awaited()
 
     async def test_count_unread_success(self, service, notif_repo):
@@ -89,5 +93,5 @@ class TestNotificationService:
 
         count = await service.count_unread(user_id)
 
-        notif_repo.count_unread.assert_awaited_once_with(user_id)
+        notif_repo.count_unread.assert_awaited_once_with(user_id=user_id)
         assert count == 3

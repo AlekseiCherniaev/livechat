@@ -90,9 +90,10 @@ def password_hasher():
 @fixture
 def tm():
     tm = AsyncMock(spec=TransactionManager)
+    db_session = AsyncMock()
 
     async def _run_in_txn(fn, *a, **kw):
-        return await fn(*a, **kw)
+        return await fn(db_session, *a, **kw)
 
     tm.run_in_transaction.side_effect = _run_in_txn
     return tm

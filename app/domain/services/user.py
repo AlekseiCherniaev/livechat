@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from uuid import UUID
-
+from typing import Any
 import structlog
 
 from app.core.constants import AnalyticsEventType
@@ -48,16 +48,17 @@ class UserService:
         if await self._user_repo.exists(username=user_data.username):
             raise UserAlreadyExists
 
-        async def _txn():
+        async def _txn(db_session: Any):
             hashed_password = self._password_hasher.hash(password=user_data.password)
             user = User(username=user_data.username, hashed_password=hashed_password)
-            user = await self._user_repo.save(user=user)
+            user = await self._user_repo.save(user=user, db_session=db_session)
 
             await create_outbox_analytics_event(
                 outbox_repo=self._outbox_repo,
                 event_type=AnalyticsEventType.USER_REGISTERED,
                 user_id=user.id,
                 dedup_key=f"user_register:{user.id}",
+                db_session=db_session,
             )
 
             logger.bind(username=user.username).debug("Saved user in repo")
@@ -71,21 +72,25 @@ class UserService:
         ):
             raise UserInvalidCredentials
 
-        async def _txn():
+        async def _txn(db_session: Any):
             user.last_login_at = datetime.now(timezone.utc)
             user.last_active = datetime.now(timezone.utc)
-            await self._user_repo.save(user)
+            await self._user_repo.save(user=user, db_session=db_session)
 
             session = UserSession(
                 user_id=user.id, connected_at=datetime.now(timezone.utc)
             )
-            await self._session_repo.save(session=session)
+
+            await self._session_repo.save(session=session, db_session=db_session)
+            # in case Mongo commit fails after this step, a session may remain in Redis,
+            # but it will expire automatically (TTL) and is never returned to the user
 
             await create_outbox_analytics_event(
                 outbox_repo=self._outbox_repo,
                 event_type=AnalyticsEventType.USER_LOGGED_IN,
                 user_id=user.id,
                 dedup_key=f"user_login:{user.id}:{session.connected_at.timestamp()}",
+                db_session=db_session,
             )
 
             logger.bind(session_id=session.id).debug(
@@ -111,16 +116,23 @@ class UserService:
         if not session:
             raise SessionNotFound
 
-        async def _txn():
-            await self._session_repo.delete_by_id(session_id=session_uuid)
-            await self._ws_session_repo.delete_by_user_id(user_id=session.user_id)
-            await self._user_repo.update_last_active(session.user_id)
+        async def _txn(db_session: Any):
+            await self._user_repo.update_last_active(
+                session.user_id, db_session=db_session
+            )
+            await self._session_repo.delete_by_id(
+                session_id=session_uuid, db_session=db_session
+            )
+            await self._ws_session_repo.delete_by_user_id(
+                user_id=session.user_id, db_session=db_session
+            )
 
             await create_outbox_analytics_event(
                 outbox_repo=self._outbox_repo,
                 event_type=AnalyticsEventType.USER_LOGGED_OUT,
                 user_id=session.user_id,
                 dedup_key=f"user_logout:{session.user_id}:{session.id}",
+                db_session=db_session,
             )
 
             logger.bind(session_id=session_uuid).debug("Deleted session in repo")
@@ -128,17 +140,24 @@ class UserService:
         await self._tm.run_in_transaction(_txn)
 
     async def delete_user(self, user_id: UUID) -> None:
-        async def _txn():
-            await self._session_repo.delete_by_user_id(user_id=user_id)
-            await self._ws_session_repo.delete_by_user_id(user_id=user_id)
-            await self._notif_repo.delete_by_user_id(user_id=user_id)
-            await self._user_repo.delete_by_id(user_id=user_id)
+        async def _txn(db_session: Any):
+            await self._notif_repo.delete_by_user_id(
+                user_id=user_id, db_session=db_session
+            )
+            await self._user_repo.delete_by_id(user_id=user_id, db_session=db_session)
+            await self._session_repo.delete_by_user_id(
+                user_id=user_id, db_session=db_session
+            )
+            await self._ws_session_repo.delete_by_user_id(
+                user_id=user_id, db_session=db_session
+            )
 
             await create_outbox_analytics_event(
                 outbox_repo=self._outbox_repo,
                 event_type=AnalyticsEventType.USER_DELETED,
                 user_id=user_id,
                 dedup_key=f"user_delete:{user_id}",
+                db_session=db_session,
             )
 
             logger.bind(session_id=user_id).debug("Deleted user in repo")
