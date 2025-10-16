@@ -1,3 +1,4 @@
+from typing import Any
 from uuid import UUID
 
 from app.core.constants import (
@@ -19,6 +20,7 @@ async def create_outbox_analytics_event(
     room_id: UUID | None = None,
     payload: dict[str, str] | None = None,
     dedup_key: str | None = None,
+    db_session: Any | None = None,
 ) -> None:
     analytics = AnalyticsEvent(
         event_type=event_type,
@@ -32,7 +34,7 @@ async def create_outbox_analytics_event(
         payload=analytics.to_payload(),
         dedup_key=dedup_key,
     )
-    await outbox_repo.save(outbox)
+    await outbox_repo.save(outbox=outbox, db_session=db_session)
 
 
 async def create_outbox_notification_event(
@@ -42,6 +44,7 @@ async def create_outbox_notification_event(
     source_id: UUID | None = None,
     payload: dict[str, str] | None = None,
     dedup_key: str | None = None,
+    db_session: Any | None = None,
 ) -> None:
     notif = Notification(
         user_id=user_id,
@@ -49,10 +52,10 @@ async def create_outbox_notification_event(
         payload=payload,
         source_id=source_id,
     )
-    notif_out = Outbox(
+    outbox = Outbox(
         type=OutboxMessageType.NOTIFICATION,
         status=OutboxStatus.PENDING,
         payload=notif.to_payload(),
         dedup_key=dedup_key,
     )
-    await outbox_repo.save(notif_out)
+    await outbox_repo.save(outbox=outbox, db_session=db_session)
