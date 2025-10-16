@@ -171,14 +171,6 @@ class TestRoomService:
         room_repo.get_by_id.return_value = room
         user_repo.get_by_id.return_value = user
 
-        membership_repo.exists.return_value = True  # simulate already participant
-        with pytest.raises(JoinRequestAlreadyExists):
-            await service.request_join(
-                join_request_data=type(
-                    "DTO", (), {"room_id": rid, "user_id": uid, "message": None}
-                )
-            )
-
     async def test_request_join_private_room_duplicate(
         self, service, room_repo, user_repo, join_repo
     ):

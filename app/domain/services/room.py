@@ -245,6 +245,7 @@ class RoomService:
                 )
 
             await self._tm.run_in_transaction(_txn)
+            return
 
         already_requested = await self._join_repo.exists(
             room_id=room.id, user_id=join_request_data.user_id
@@ -252,7 +253,7 @@ class RoomService:
         if already_requested:
             raise JoinRequestAlreadyExists
 
-        async def _txn():
+        async def __txn():
             request = JoinRequest(
                 room_id=room.id,
                 user_id=join_request_data.user_id,
@@ -283,7 +284,7 @@ class RoomService:
                 room_id=join_request_data.room_id, user_id=join_request_data.user_id
             ).info("Join request created")
 
-        await self._tm.run_in_transaction(_txn)
+        await self._tm.run_in_transaction(__txn)
 
     async def handle_join_request(self, request_id: UUID, accept: bool) -> None:
         request = await self._join_repo.get_by_id(request_id=request_id)
