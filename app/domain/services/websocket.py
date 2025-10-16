@@ -5,8 +5,8 @@ from uuid import UUID
 import structlog
 
 from app.core.constants import AnalyticsEventType, BroadcastEventType
+from app.domain.dtos.user import user_to_dto, UserPublicDTO
 from app.domain.entities.event_payload import EventPayload
-from app.domain.entities.user import User
 from app.domain.entities.websocket_session import WebSocketSession
 from app.domain.exceptions.websocket_session import WebSocketSessionNotFound
 from app.domain.ports.connection import ConnectionPort
@@ -112,8 +112,9 @@ class WebSocketService:
         await self._tm.run_in_transaction(_txn)
         await self._conn.update_ping(session_id=session_id)
 
-    async def list_users_in_room(self, room_id: UUID) -> list[User]:
-        return await self._conn.list_users_in_room(room_id=room_id)
+    async def list_users_in_room(self, room_id: UUID) -> list[UserPublicDTO]:
+        users = await self._conn.list_users_in_room(room_id=room_id)
+        return [user_to_dto(user) for user in users]
 
     async def disconnect_user_from_room(self, user_id: UUID, room_id: UUID) -> None:
         async def _txn(db_session: Any):

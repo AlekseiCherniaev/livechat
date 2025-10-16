@@ -8,6 +8,7 @@ from app.core.constants import (
     AnalyticsEventType,
     BroadcastEventType,
 )
+from app.domain.dtos.message import message_to_dto, MessagePublicDTO
 from app.domain.entities.event_payload import EventPayload
 from app.domain.entities.message import Message
 from app.domain.exceptions.message import MessageNotFound, MessagePermissionError
@@ -94,11 +95,11 @@ class MessageService:
         if message.user_id != user_id:
             raise MessagePermissionError
 
-        async def _txn():
+        async def _txn(db_session: Any):
             message.content = new_content
             message.edited = True
             message.updated_at = datetime.now(timezone.utc)
-            await self._message_repo.save(message)
+            await self._message_repo.save(message=message, db_session=db_session)
 
             await create_outbox_analytics_event(
                 outbox_repo=self._outbox_repo,
@@ -107,6 +108,7 @@ class MessageService:
                 room_id=message.room_id,
                 payload={"new_message": new_content},
                 dedup_key=f"message_edited:{message.id}",
+                db_session=db_session,
             )
 
             logger.bind(message_id=message.id).info("Message edited")
@@ -137,8 +139,10 @@ class MessageService:
         if message.user_id != user_id:
             raise MessagePermissionError
 
-        async def _txn():
-            await self._message_repo.delete_by_id(message_id=message_id)
+        async def _txn(db_session: Any):
+            await self._message_repo.delete_by_id(
+                message_id=message_id, db_session=db_session
+            )
 
             await create_outbox_analytics_event(
                 outbox_repo=self._outbox_repo,
@@ -147,6 +151,7 @@ class MessageService:
                 room_id=message.room_id,
                 payload={"message": message.content},
                 dedup_key=f"message_deleted:{message.id}",
+                db_session=db_session,
             )
 
             logger.bind(message_id=message.id).info("Message deleted")
@@ -164,9 +169,15 @@ class MessageService:
         )
 
     async def get_recent_messages(
-        self, room_id: UUID, limit: int = 50
-    ) -> list[Message]:
-        return await self._message_repo.get_recent_by_room(room_id=room_id, limit=limit)
+        self, room_id: UUID, limit: int
+    ) -> list[MessagePublicDTO]:
+        messages = await self._message_repo.get_recent_by_room(
+            room_id=room_id, limit=limit
+        )
+        return [message_to_dto(message) for message in messages]
 
-    async def get_user_messages(self, user_id: UUID, limit: int = 50) -> list[Message]:
-        return await self._message_repo.list_by_user(user_id=user_id, limit=limit)
+    async def get_user_messages(
+        self, user_id: UUID, limit: int
+    ) -> list[MessagePublicDTO]:
+        messages = await self._message_repo.list_by_user(user_id=user_id, limit=limit)
+        return [message_to_dto(message) for message in messages]

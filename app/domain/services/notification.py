@@ -4,7 +4,7 @@ from uuid import UUID
 import structlog
 
 from app.core.constants import AnalyticsEventType
-from app.domain.entities.notification import Notification
+from app.domain.dtos.notification import NotificationPublicDTO, notification_to_dto
 from app.domain.exceptions.notification import NotificationNotFound
 from app.domain.ports.transaction_manager import TransactionManager
 from app.domain.repos.notification import NotificationRepository
@@ -27,14 +27,14 @@ class NotificationService:
 
     async def list_user_notifications(
         self, user_id: UUID, unread_only: bool, limit: int
-    ) -> list[Notification]:
+    ) -> list[NotificationPublicDTO]:
         notifications = await self._notif_repo.get_user_notifications(
             user_id=user_id, unread_only=unread_only, limit=limit
         )
         logger.bind(user_id=user_id, amount=len(notifications)).debug(
             "Fetched notifications"
         )
-        return notifications
+        return [notification_to_dto(notification) for notification in notifications]
 
     async def mark_as_read(self, notification_id: UUID) -> None:
         notification = await self._notif_repo.get_by_id(notification_id=notification_id)

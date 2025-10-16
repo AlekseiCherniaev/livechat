@@ -1,5 +1,6 @@
 from typing import Protocol, Any
 from uuid import UUID
+
 from app.domain.entities.websocket_session import WebSocketSession
 
 

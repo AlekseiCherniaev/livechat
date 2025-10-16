@@ -1,24 +1,25 @@
 from datetime import datetime, timezone
-from uuid import UUID
 from typing import Any
+from uuid import UUID
+
 import structlog
 
 from app.core.constants import AnalyticsEventType
 from app.domain.dtos.user import UserAuthDTO, UserPublicDTO, user_to_dto
 from app.domain.entities.user import User
 from app.domain.entities.user_session import UserSession
-from app.domain.exceptions.user_session import SessionNotFound, InvalidSession
 from app.domain.exceptions.user import (
     UserAlreadyExists,
     UserInvalidCredentials,
     UserNotFound,
 )
+from app.domain.exceptions.user_session import SessionNotFound, InvalidSession
 from app.domain.ports.password_hasher import PasswordHasherPort
 from app.domain.ports.transaction_manager import TransactionManager
 from app.domain.repos.notification import NotificationRepository
 from app.domain.repos.outbox import OutboxRepository
-from app.domain.repos.user_session import UserSessionRepository
 from app.domain.repos.user import UserRepository
+from app.domain.repos.user_session import UserSessionRepository
 from app.domain.repos.websocket_session import WebSocketSessionRepository
 from app.domain.services.utils import create_outbox_analytics_event
 
