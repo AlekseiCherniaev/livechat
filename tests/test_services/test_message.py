@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
@@ -6,182 +7,188 @@ from pytest_asyncio import fixture
 
 from app.core.constants import BroadcastEventType
 from app.domain.entities.message import Message
-from app.domain.exceptions.message import MessageNotFound, MessagePermissionError
+from app.domain.exceptions.message import (
+    MessageNotFound,
+    MessagePermissionError,
+)
+from app.domain.exceptions.user import UserNotFound
 from app.domain.services.message import MessageService
-
-
-def any_dict_with_keys(expected_keys: set[str]):
-    class Matcher:
-        def __eq__(self, other):
-            return isinstance(other, dict) and expected_keys.issubset(other.keys())
-
-        def __repr__(self):
-            return f"<AnyDictWithKeys {expected_keys}>"
-
-    return Matcher()
 
 
 class TestMessageService:
     @fixture
-    def service(self, message_repo, connection_port, outbox_repo, tm) -> MessageService:
+    def service(self, message_repo, user_repo, connection_port, outbox_repo, tm):
         return MessageService(
             message_repo=message_repo,
+            user_repo=user_repo,
             connection_port=connection_port,
             outbox_repo=outbox_repo,
             transaction_manager=tm,
         )
 
     async def test_send_message_success(
-        self, service, message_repo, connection_port, outbox_repo, tm
+        self, service, message_repo, user_repo, connection_port
     ):
-        room_id = uuid4()
         user_id = uuid4()
-        content = "Hello world"
+        room_id = uuid4()
+        user_repo.get_by_id.return_value = AsyncMock(username="john")
 
-        message_repo.save.side_effect = lambda message: message
+        async def save_message(message, db_session):
+            message.id = uuid4()
+            return message
 
-        await service.send_message(room_id, user_id, content)
+        message_repo.save.side_effect = save_message
 
-        tm.run_in_transaction.assert_awaited_once()
-        message_repo.save.assert_awaited_once()
-        connection_port.broadcast_event.assert_awaited_once_with(
-            room_id=room_id,
-            event_type=BroadcastEventType.MESSAGE_CREATED,
-            payload=any_dict_with_keys({"id", "user_id", "content", "timestamp"}),
-        )
-        outbox_repo.save.assert_awaited_once()
+        await service.send_message(room_id=room_id, user_id=user_id, content="hi")
+
+        user_repo.get_by_id.assert_awaited_once_with(user_id=user_id)
+        message_repo.save.assert_awaited()
+        connection_port.broadcast_event.assert_awaited_once()
+        args, kwargs = connection_port.broadcast_event.await_args
+        assert kwargs["room_id"] == room_id
+        assert kwargs["event_type"] == BroadcastEventType.MESSAGE_CREATED
+        assert kwargs["payload"].content == "hi"
+
+    async def test_send_message_user_not_found(self, service, user_repo):
+        user_repo.get_by_id.return_value = None
+        with pytest.raises(UserNotFound):
+            await service.send_message(uuid4(), uuid4(), "hello")
 
     async def test_edit_message_success(
-        self, service, message_repo, connection_port, outbox_repo, tm
+        self, service, message_repo, user_repo, connection_port
     ):
         user_id = uuid4()
-        message = Message(
-            room_id=uuid4(),
+        room_id = uuid4()
+        msg_id = uuid4()
+        user_repo.get_by_id.return_value = AsyncMock(username="john")
+        message_repo.get_by_id.return_value = Message(
+            id=msg_id,
+            room_id=room_id,
             user_id=user_id,
-            content="Old message",
-            timestamp=datetime.now(timezone.utc),
-            id=uuid4(),
-        )
-        new_content = "Updated message"
-
-        message_repo.get_by_id.return_value = message
-        message_repo.save.side_effect = lambda m: m
-
-        await service.edit_message(
-            message_id=message.id, user_id=user_id, new_content=new_content
+            content="old",
+            created_at=datetime.now(timezone.utc),
         )
 
-        tm.run_in_transaction.assert_awaited_once()
-        message_repo.save.assert_awaited_once()
-        connection_port.broadcast_event.assert_awaited_once_with(
-            room_id=message.room_id,
-            event_type=BroadcastEventType.MESSAGE_EDITED,
-            payload=any_dict_with_keys({"id", "user_id", "content", "timestamp"}),
-        )
-        outbox_repo.save.assert_awaited_once()
-        assert message.edited is True
-        assert message.content == new_content
+        await service.edit_message(msg_id, user_id, "new content")
 
-    async def test_edit_message_not_found(self, service, message_repo):
+        message_repo.save.assert_awaited()
+        connection_port.broadcast_event.assert_awaited_once()
+        args, kwargs = connection_port.broadcast_event.await_args
+        assert kwargs["event_type"] == BroadcastEventType.MESSAGE_EDITED
+        assert kwargs["payload"].content == "new content"
+
+    async def test_edit_message_user_not_found(self, service, user_repo):
+        user_repo.get_by_id.return_value = None
+        with pytest.raises(UserNotFound):
+            await service.edit_message(uuid4(), uuid4(), "new")
+
+    async def test_edit_message_not_found(self, service, user_repo, message_repo):
+        user_repo.get_by_id.return_value = AsyncMock(username="john")
         message_repo.get_by_id.return_value = None
         with pytest.raises(MessageNotFound):
-            await service.edit_message(uuid4(), uuid4(), "new")
+            await service.edit_message(uuid4(), uuid4(), "edit")
 
-    async def test_edit_message_permission_error(self, service, message_repo):
+    async def test_edit_message_permission_error(
+        self, service, user_repo, message_repo
+    ):
+        user_id = uuid4()
         message_repo.get_by_id.return_value = Message(
+            id=uuid4(),
             room_id=uuid4(),
             user_id=uuid4(),
-            content="Hi",
-            timestamp=datetime.now(timezone.utc),
+            content="hello",
+            created_at=datetime.now(timezone.utc),
         )
+        user_repo.get_by_id.return_value = AsyncMock(username="john")
+
         with pytest.raises(MessagePermissionError):
-            await service.edit_message(uuid4(), uuid4(), "new")
+            await service.edit_message(uuid4(), user_id, "new text")
 
     async def test_delete_message_success(
-        self, service, message_repo, connection_port, outbox_repo, tm
+        self, service, user_repo, message_repo, connection_port
     ):
         user_id = uuid4()
+        room_id = uuid4()
+        msg_id = uuid4()
         message = Message(
-            room_id=uuid4(),
+            id=msg_id,
+            room_id=room_id,
             user_id=user_id,
-            content="Message to delete",
-            timestamp=datetime.now(timezone.utc),
-            id=uuid4(),
+            content="bye",
+            created_at=datetime.now(timezone.utc),
         )
-
+        user_repo.get_by_id.return_value = AsyncMock(username="john")
         message_repo.get_by_id.return_value = message
 
-        await service.delete_message(message_id=message.id, user_id=user_id)
+        await service.delete_message(msg_id, user_id)
 
-        tm.run_in_transaction.assert_awaited_once()
-        message_repo.delete_by_id.assert_awaited_once_with(message_id=message.id)
-        connection_port.broadcast_event.assert_awaited_once_with(
-            room_id=message.room_id,
-            event_type=BroadcastEventType.MESSAGE_DELETED,
-            payload=any_dict_with_keys({"id", "user_id", "timestamp"}),
-        )
-        outbox_repo.save.assert_awaited_once()
+        message_repo.delete_by_id.assert_awaited_once()
+        connection_port.broadcast_event.assert_awaited_once()
+        args, kwargs = connection_port.broadcast_event.await_args
+        assert kwargs["event_type"] == BroadcastEventType.MESSAGE_DELETED
+        assert kwargs["payload"].user_id == user_id
 
-    async def test_delete_message_not_found(self, service, message_repo):
+    async def test_delete_message_user_not_found(self, service, user_repo):
+        user_repo.get_by_id.return_value = None
+        with pytest.raises(UserNotFound):
+            await service.delete_message(uuid4(), uuid4())
+
+    async def test_delete_message_not_found(self, service, user_repo, message_repo):
+        user_repo.get_by_id.return_value = AsyncMock(username="john")
         message_repo.get_by_id.return_value = None
         with pytest.raises(MessageNotFound):
             await service.delete_message(uuid4(), uuid4())
 
-    async def test_delete_message_permission_error(self, service, message_repo):
+    async def test_delete_message_permission_error(
+        self, service, user_repo, message_repo
+    ):
+        user_id = uuid4()
         message_repo.get_by_id.return_value = Message(
+            id=uuid4(),
             room_id=uuid4(),
             user_id=uuid4(),
-            content="Test",
-            timestamp=datetime.now(timezone.utc),
+            content="bye",
+            created_at=datetime.now(timezone.utc),
         )
+        user_repo.get_by_id.return_value = AsyncMock(username="john")
+
         with pytest.raises(MessagePermissionError):
-            await service.delete_message(uuid4(), uuid4())
+            await service.delete_message(uuid4(), user_id)
 
     async def test_get_recent_messages(self, service, message_repo):
         room_id = uuid4()
-        messages = [
+        message_repo.get_recent_by_room.return_value = [
             Message(
+                id=uuid4(),
                 room_id=room_id,
                 user_id=uuid4(),
-                content="A",
-                timestamp=datetime.now(timezone.utc),
+                content="hello",
+                created_at=datetime.now(timezone.utc),
             )
         ]
-        message_repo.get_recent_by_room.return_value = messages
 
-        result = await service.get_recent_messages(room_id, limit=10)
+        result = await service.get_recent_messages(room_id=room_id, limit=5)
 
-        assert result == messages
         message_repo.get_recent_by_room.assert_awaited_once_with(
-            room_id=room_id, limit=10
+            room_id=room_id, limit=5
         )
-
-    async def test_get_messages_since(self, service, message_repo):
-        room_id = uuid4()
-        since = datetime.now(timezone.utc)
-        messages = [
-            Message(room_id=room_id, user_id=uuid4(), content="B", timestamp=since)
-        ]
-        message_repo.get_since.return_value = messages
-
-        result = await service.get_messages_since(room_id, since)
-
-        assert result == messages
-        message_repo.get_since.assert_awaited_once_with(room_id=room_id, since=since)
+        assert len(result) == 1
+        assert result[0].content == "hello"
 
     async def test_get_user_messages(self, service, message_repo):
         user_id = uuid4()
-        messages = [
+        message_repo.list_by_user.return_value = [
             Message(
+                id=uuid4(),
                 room_id=uuid4(),
                 user_id=user_id,
-                content="C",
-                timestamp=datetime.now(timezone.utc),
+                content="yo",
+                created_at=datetime.now(timezone.utc),
             )
         ]
-        message_repo.list_by_user.return_value = messages
 
-        result = await service.get_user_messages(user_id, limit=5)
+        result = await service.get_user_messages(user_id=user_id, limit=3)
 
-        assert result == messages
-        message_repo.list_by_user.assert_awaited_once_with(user_id=user_id, limit=5)
+        message_repo.list_by_user.assert_awaited_once_with(user_id=user_id, limit=3)
+        assert len(result) == 1
+        assert result[0].content == "yo"

@@ -83,7 +83,9 @@ def connection_port():
 def password_hasher():
     hasher = AsyncMock(spec=PasswordHasherPort)
     hasher.hash.side_effect = lambda password: f"hashed-{password}"
-    hasher.verify.side_effect = lambda plain, hashed: hashed == f"hashed-{plain}"
+    hasher.verify.side_effect = (
+        lambda *, password, hashed: hashed == f"hashed-{password}"
+    )
     return hasher
 
 

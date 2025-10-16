@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from uuid import uuid4, UUID
+from uuid import uuid4
 
 import pytest
 from pytest_asyncio import fixture
@@ -22,124 +22,145 @@ class TestUserService:
         self,
         user_repo,
         session_repo,
-        notif_repo,
         ws_session_repo,
+        notif_repo,
         outbox_repo,
         password_hasher,
         tm,
-    ) -> UserService:
+    ):
         return UserService(
             user_repo=user_repo,
             session_repo=session_repo,
-            notif_repo=notif_repo,
             ws_session_repo=ws_session_repo,
+            notif_repo=notif_repo,
             outbox_repo=outbox_repo,
             password_hasher_port=password_hasher,
             transaction_manager=tm,
         )
 
-    @fixture
-    def user_auth_dto(self):
-        return UserAuthDTO(username="alice", password="secret")
-
-    async def test_register_user_success(self, service, user_repo, tm, user_auth_dto):
+    async def test_register_user_success(self, service, user_repo, password_hasher):
+        user_data = UserAuthDTO(username="alice", password="secret")
         user_repo.exists.return_value = False
-        user_repo.save.side_effect = lambda user: user
+        user_repo.save.return_value = User(
+            id=uuid4(), username="alice", hashed_password="hashed-secret"
+        )
 
-        await service.register_user(user_auth_dto)
+        await service.register_user(user_data)
 
         user_repo.exists.assert_awaited_once_with(username="alice")
-        tm.run_in_transaction.assert_awaited_once()
-        user_repo.save.assert_awaited()
-        service._outbox_repo.save.assert_awaited_once()
+        user_repo.save.assert_awaited_once()
+        password_hasher.hash.assert_called_once_with(password="secret")
 
-    async def test_register_user_already_exists(
-        self, service, user_repo, user_auth_dto
-    ):
+    async def test_register_user_already_exists(self, service, user_repo):
         user_repo.exists.return_value = True
+        user_data = UserAuthDTO(username="bob", password="123")
         with pytest.raises(UserAlreadyExists):
-            await service.register_user(user_auth_dto)
+            await service.register_user(user_data)
 
-    async def test_login_user_success(
-        self, service, user_repo, session_repo, password_hasher, tm, user_auth_dto
-    ):
-        user = User(username="alice", hashed_password="hashed-secret", id=uuid4())
+    async def test_login_user_success(self, service, user_repo, session_repo):
+        user_id = uuid4()
+        user = User(id=user_id, username="john", hashed_password="hashed-pass")
         user_repo.get_by_username.return_value = user
-        session_repo.save.side_effect = lambda session: session
+        service._password_hasher.verify.return_value = True
+        session_repo.save.return_value = UserSession(
+            id=uuid4(), user_id=user_id, connected_at=datetime.now(timezone.utc)
+        )
 
-        result = await service.login_user(user_auth_dto)
+        session_id = await service.login_user(
+            UserAuthDTO(username="john", password="pass")
+        )
 
-        assert isinstance(result, UUID)
-        tm.run_in_transaction.assert_awaited_once()
+        user_repo.get_by_username.assert_awaited_once_with(username="john")
         session_repo.save.assert_awaited_once()
-        service._outbox_repo.save.assert_awaited_once()
+        assert isinstance(session_id, uuid4().__class__)
 
-    async def test_login_user_invalid_credentials(
-        self, service, user_repo, password_hasher, user_auth_dto
-    ):
+    async def test_login_user_invalid_username(self, service, user_repo):
         user_repo.get_by_username.return_value = None
         with pytest.raises(UserInvalidCredentials):
-            await service.login_user(user_auth_dto)
+            await service.login_user(UserAuthDTO(username="bad", password="pwd"))
 
-        user_repo.get_by_username.return_value = User(
-            username="alice", hashed_password="hashed-other"
-        )
+    async def test_login_user_invalid_password(self, service, user_repo):
+        user = User(id=uuid4(), username="john", hashed_password="hashed-pass")
+        user_repo.get_by_username.return_value = user
+        service._password_hasher.verify.return_value = False
         with pytest.raises(UserInvalidCredentials):
-            await service.login_user(UserAuthDTO(username="alice", password="wrong"))
+            await service.login_user(UserAuthDTO(username="john", password="wrong"))
 
-    async def test_logout_user_success(self, service, session_repo, tm):
-        session = UserSession(
-            user_id=uuid4(), connected_at=datetime.now(timezone.utc), id=uuid4()
+    async def test_logout_user_success(
+        self, service, session_repo, user_repo, ws_session_repo
+    ):
+        user_id = uuid4()
+        session_id = uuid4()
+        session_repo.get_by_id.return_value = UserSession(
+            id=session_id, user_id=user_id, connected_at=datetime.now(timezone.utc)
         )
-        session_repo.get_by_id.return_value = session
 
-        await service.logout_user(session_id=str(session.id))
+        await service.logout_user(str(session_id))
 
-        session_repo.get_by_id.assert_awaited_once_with(session_id=session.id)
-        session_repo.delete_by_id.assert_awaited_once_with(session_id=session.id)
-        tm.run_in_transaction.assert_awaited_once()
-        service._outbox_repo.save.assert_awaited_once()
+        session_repo.get_by_id.assert_awaited_once_with(session_id=session_id)
+        user_repo.update_last_active.assert_awaited_once()
+        session_repo.delete_by_id.assert_awaited()
+        ws_session_repo.delete_by_user_id.assert_awaited()
 
-    async def test_logout_user_not_found_or_invalid(self, service):
+    async def test_logout_user_no_session(self, service):
         with pytest.raises(SessionNotFound):
-            await service.logout_user(session_id=None)
-        with pytest.raises(InvalidSession):
-            await service.logout_user(session_id="invalid-uuid")
+            await service.logout_user(None)
 
-    async def test_get_user_by_session_success(self, service, user_repo, session_repo):
-        user = User(username="bob", hashed_password="hashed-secret", id=uuid4())
-        session = UserSession(
-            user_id=user.id, connected_at=datetime.now(timezone.utc), id=uuid4()
+    async def test_logout_user_invalid_uuid(self, service):
+        with pytest.raises(InvalidSession):
+            await service.logout_user("not-a-uuid")
+
+    async def test_logout_user_not_found(self, service, session_repo):
+        session_repo.get_by_id.return_value = None
+        with pytest.raises(SessionNotFound):
+            await service.logout_user(str(uuid4()))
+
+    async def test_delete_user_success(
+        self, service, user_repo, notif_repo, session_repo, ws_session_repo
+    ):
+        user_id = uuid4()
+        await service.delete_user(user_id)
+        notif_repo.delete_by_user_id.assert_awaited_once()
+        user_repo.delete_by_id.assert_awaited_once()
+        session_repo.delete_by_user_id.assert_awaited_once()
+        ws_session_repo.delete_by_user_id.assert_awaited_once()
+
+    async def test_get_user_by_session_success(self, service, session_repo, user_repo):
+        user_id = uuid4()
+        session_id = uuid4()
+        session_repo.get_by_id.return_value = UserSession(
+            id=session_id, user_id=user_id, connected_at=datetime.now(timezone.utc)
+        )
+        user_repo.get_by_id.return_value = User(
+            id=user_id, username="alice", hashed_password="x"
         )
 
-        session_repo.get_by_id.return_value = session
-        user_repo.get_by_id.return_value = user
+        result = await service.get_user_by_session(str(session_id))
 
-        result = await service.get_user_by_session(str(session.id))
-
-        assert result.username == user.username
-        session_repo.get_by_id.assert_awaited_once()
-        user_repo.get_by_id.assert_awaited_once_with(user_id=user.id)
+        session_repo.get_by_id.assert_awaited_once_with(session_id=session_id)
+        user_repo.get_by_id.assert_awaited_once_with(user_id=user_id)
+        assert result.username == "alice"
 
     async def test_get_user_by_session_not_found(self, service, session_repo):
         session_repo.get_by_id.return_value = None
         with pytest.raises(SessionNotFound):
             await service.get_user_by_session(str(uuid4()))
 
+    async def test_get_user_by_session_user_not_found(
+        self, service, session_repo, user_repo
+    ):
+        session_id = uuid4()
+        session_repo.get_by_id.return_value = UserSession(
+            id=session_id, user_id=uuid4(), connected_at=datetime.now(timezone.utc)
+        )
+        user_repo.get_by_id.return_value = None
+        with pytest.raises(UserNotFound):
+            await service.get_user_by_session(str(session_id))
+
+    async def test_get_user_by_session_invalid(self, service):
+        with pytest.raises(InvalidSession):
+            await service.get_user_by_session("not-uuid")
+
+    async def test_get_user_by_session_none(self, service):
         with pytest.raises(SessionNotFound):
             await service.get_user_by_session(None)
-
-        with pytest.raises(InvalidSession):
-            await service.get_user_by_session("invalid-uuid")
-
-    async def test_get_user_by_session_user_not_found(
-        self, service, user_repo, session_repo
-    ):
-        session = UserSession(
-            user_id=uuid4(), connected_at=datetime.now(timezone.utc), id=uuid4()
-        )
-        session_repo.get_by_id.return_value = session
-        user_repo.get_by_id.return_value = None
-
-        with pytest.raises(UserNotFound):
-            await service.get_user_by_session(str(session.id))

@@ -1,6 +1,7 @@
+from uuid import uuid4
+
 import pytest
 from pytest_asyncio import fixture
-from uuid import uuid4
 
 from app.core.constants import NotificationType
 from app.domain.entities.notification import Notification
