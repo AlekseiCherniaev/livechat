@@ -1,7 +1,8 @@
-from typing import Protocol, Any
+from typing import Protocol
 from uuid import UUID
 
 from app.core.constants import BroadcastEventType
+from app.domain.entities.event_payload import EventPayload
 from app.domain.entities.user import User
 from app.domain.entities.websocket_session import WebSocketSession
 
@@ -12,7 +13,7 @@ class ConnectionPort(Protocol):
     async def disconnect(self, session_id: UUID) -> None: ...
 
     async def broadcast_event(
-        self, room_id: UUID, event_type: BroadcastEventType, payload: dict[str, Any]
+        self, room_id: UUID, event_type: BroadcastEventType, payload: EventPayload
     ) -> None: ...
 
     async def disconnect_user_from_room(self, user_id: UUID, room_id: UUID) -> None: ...
@@ -20,7 +21,5 @@ class ConnectionPort(Protocol):
     async def list_users_in_room(self, room_id: UUID) -> list[User]: ...
 
     async def update_ping(self, session_id: UUID) -> None: ...
-
-    async def get_active_sessions(self, room_id: UUID) -> list[WebSocketSession]: ...
 
     async def is_user_online(self, user_id: UUID) -> bool: ...
