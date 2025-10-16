@@ -1,4 +1,5 @@
 from datetime import timezone, datetime
+from typing import Any
 from uuid import UUID
 
 import structlog
@@ -68,10 +69,10 @@ class RoomService:
         if await self._room_repo.exists(name=room_data.name):
             raise RoomAlreadyExists
 
-        if not await self._user_repo.get_by_id(room_data.created_by):
+        if not await self._user_repo.get_by_id(user_id=room_data.created_by):
             raise UserNotFound
 
-        async def _txn():
+        async def _txn(db_session: Any):
             room = Room(
                 name=room_data.name,
                 description=room_data.description,
@@ -79,8 +80,13 @@ class RoomService:
                 created_by=room_data.created_by,
                 participants_count=0,
             )
-            room = await self._room_repo.save(room=room)
-            await self._add_participant(room.id, room_data.created_by, RoomRole.OWNER)
+            room = await self._room_repo.save(room=room, db_session=db_session)
+            await self._add_participant(
+                room_id=room.id,
+                user_id=room_data.created_by,
+                role=RoomRole.OWNER,
+                db_session=db_session,
+            )
 
             await create_outbox_analytics_event(
                 outbox_repo=self._outbox_repo,
@@ -89,6 +95,7 @@ class RoomService:
                 room_id=room.id,
                 payload={"room_name": room.name},
                 dedup_key=f"room_created:{room.id}",
+                db_session=db_session,
             )
             logger.bind(room_id=room.id).info("Room created")
 
@@ -118,9 +125,9 @@ class RoomService:
         if not changed:
             raise NoChangesDetected
 
-        async def _txn():
+        async def _txn(db_session: Any):
             room.updated_at = datetime.now(timezone.utc)
-            room_saved = await self._room_repo.save(room)
+            room_saved = await self._room_repo.save(room=room, db_session=db_session)
 
             await create_outbox_analytics_event(
                 outbox_repo=self._outbox_repo,
@@ -129,6 +136,7 @@ class RoomService:
                 room_id=room.id,
                 payload={"room_name": room.name},
                 dedup_key=f"room_update:{room.id}:{room.updated_at.timestamp()}",
+                db_session=db_session,
             )
             logger.bind(room_id=room.id).info("Room updated")
 
@@ -143,8 +151,8 @@ class RoomService:
         if not room:
             raise RoomNotFound
 
-        async def _txn():
-            await self._room_repo.delete_by_id(room_id=room_id)
+        async def _txn(db_session: Any):
+            await self._room_repo.delete_by_id(room_id=room_id, db_session=db_session)
 
             await create_outbox_analytics_event(
                 outbox_repo=self._outbox_repo,
@@ -153,6 +161,7 @@ class RoomService:
                 room_id=room.id,
                 payload={"room_name": room.name},
                 dedup_key=f"room_deleted:{room.id}",
+                db_session=db_session,
             )
 
             logger.bind(room_id=room_id).info("Room deleted")
@@ -173,8 +182,12 @@ class RoomService:
         rooms = await self._membership_repo.list_rooms_for_user(user_id=user_id)
         return [room_to_dto(room=room) for room in rooms]
 
-    async def list_top_public_rooms(self, limit: int) -> list[RoomPublicDTO]:
-        rooms = await self._room_repo.list_top_room(limit=limit, only_public=True)
+    async def list_top_rooms(
+        self, limit: int, only_public: bool
+    ) -> list[RoomPublicDTO]:
+        rooms = await self._room_repo.list_top_room(
+            limit=limit, only_public=only_public
+        )
         return [room_to_dto(room) for room in rooms]
 
     async def list_room_join_requests(
@@ -228,8 +241,13 @@ class RoomService:
 
         if room.is_public:
 
-            async def _txn():
-                await self._add_participant(room.id, join_request_data.user_id)
+            async def _txn(db_session: Any):
+                await self._add_participant(
+                    room_id=room.id,
+                    user_id=join_request_data.user_id,
+                    role=RoomRole.MEMBER,
+                    db_session=db_session,
+                )
 
                 await create_outbox_analytics_event(
                     outbox_repo=self._outbox_repo,
@@ -238,6 +256,7 @@ class RoomService:
                     room_id=room.id,
                     payload={"room_name": room.name, "username": user.username},
                     dedup_key=f"user_join:{room.id}:{join_request_data.user_id}",
+                    db_session=db_session,
                 )
 
                 logger.bind(room_id=room.id, user_id=join_request_data.user_id).info(
@@ -253,14 +272,14 @@ class RoomService:
         if already_requested:
             raise JoinRequestAlreadyExists
 
-        async def __txn():
+        async def __txn(db_session: Any):
             request = JoinRequest(
                 room_id=room.id,
                 user_id=join_request_data.user_id,
                 status=JoinRequestStatus.PENDING,
                 message=join_request_data.message,
             )
-            await self._join_repo.save(request)
+            await self._join_repo.save(request=request, db_session=db_session)
 
             await create_outbox_notification_event(
                 outbox_repo=self._outbox_repo,
@@ -269,6 +288,7 @@ class RoomService:
                 source_id=join_request_data.user_id,
                 payload={"room_name": room.name, "username": user.username},
                 dedup_key=f"notif_joinreq:{room.id}:{join_request_data.user_id}",
+                db_session=db_session,
             )
 
             await create_outbox_analytics_event(
@@ -278,6 +298,7 @@ class RoomService:
                 room_id=room.id,
                 payload={"room_name": room.name, "username": user.username},
                 dedup_key=f"joinreq_created:{room.id}:{join_request_data.user_id}",
+                db_session=db_session,
             )
 
             logger.bind(
@@ -295,9 +316,13 @@ class RoomService:
         if room is None:
             raise RoomNotFound
 
-        async def _txn():
+        async def _txn(db_session: Any):
             if accept:
-                await self._add_participant(request.room_id, request.user_id)
+                await self._add_participant(
+                    room_id=request.room_id,
+                    user_id=request.user_id,
+                    db_session=db_session,
+                )
                 request.status = JoinRequestStatus.ACCEPTED
                 notif_type = NotificationType.JOIN_REQUEST_ACCEPTED
                 event_type = AnalyticsEventType.JOIN_REQUEST_ACCEPTED
@@ -308,7 +333,7 @@ class RoomService:
 
             request.updated_at = datetime.now(timezone.utc)
             request.handled_by = room.created_by
-            await self._join_repo.save(request)
+            await self._join_repo.save(request=request, db_session=db_session)
 
             await create_outbox_notification_event(
                 outbox_repo=self._outbox_repo,
@@ -317,6 +342,7 @@ class RoomService:
                 source_id=room.created_by,
                 payload={"room_name": room.name},
                 dedup_key=f"joinreq_handled:{request.id}",
+                db_session=db_session,
             )
 
             await create_outbox_analytics_event(
@@ -326,6 +352,7 @@ class RoomService:
                 room_id=request.room_id,
                 payload={"room_name": room.name},
                 dedup_key=f"analytics_joinreq:{request.id}",
+                db_session=db_session,
             )
 
             logger.bind(request_id=request_id, status=request.status).info(
@@ -335,9 +362,15 @@ class RoomService:
         await self._tm.run_in_transaction(_txn)
 
     async def _add_participant(
-        self, room_id: UUID, user_id: UUID, role: RoomRole = RoomRole.MEMBER
+        self,
+        room_id: UUID,
+        user_id: UUID,
+        role: RoomRole = RoomRole.MEMBER,
+        db_session: Any | None = None,
     ) -> None:
-        exists = await self._membership_repo.exists(room_id=room_id, user_id=user_id)
+        exists = await self._membership_repo.exists(
+            room_id=room_id, user_id=user_id, db_session=db_session
+        )
         if exists:
             return None
 
@@ -347,9 +380,12 @@ class RoomService:
             role=role,
             joined_at=datetime.now(timezone.utc),
         )
-        await self._membership_repo.save(room_membership=room_membership)
-        await self._room_repo.add_participant(room_id=room_id)
+        await self._membership_repo.save(
+            room_membership=room_membership, db_session=db_session
+        )
+        await self._room_repo.add_participant(room_id=room_id, db_session=db_session)
         logger.bind(room_id=room_id, user_id=user_id).info("User added to room")
+
         return None
 
     async def remove_participant(self, room_id: UUID, user_id: UUID) -> None:
@@ -357,17 +393,23 @@ class RoomService:
         if room is None:
             raise RoomNotFound
 
-        async def _txn():
-            await self._membership_repo.delete(room_id=room_id, user_id=user_id)
+        async def _txn(db_session: Any):
+            await self._membership_repo.delete(
+                room_id=room_id, user_id=user_id, db_session=db_session
+            )
 
             if user_id == room.created_by:
-                await self._room_repo.delete_by_id(room_id=room_id)
+                await self._room_repo.delete_by_id(
+                    room_id=room_id, db_session=db_session
+                )
                 event_type = AnalyticsEventType.ROOM_DELETED
                 logger.bind(room_id=room_id, user_id=user_id).info(
                     "Room was deleted as creator left"
                 )
             else:
-                await self._room_repo.remove_participant(room_id)
+                await self._room_repo.remove_participant(
+                    room_id=room_id, db_session=db_session
+                )
                 event_type = AnalyticsEventType.USER_LEFT_ROOM
                 logger.bind(room_id=room_id, user_id=user_id).info(
                     "User removed from room"
@@ -379,6 +421,7 @@ class RoomService:
                 user_id=user_id,
                 room_id=room_id,
                 dedup_key=f"user_left:{room_id}:{user_id}",
+                db_session=db_session,
             )
 
         await self._tm.run_in_transaction(_txn)
