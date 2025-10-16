@@ -34,6 +34,11 @@ async def ensure_indexes(db: AsyncDatabase[Any]) -> None:
     )
     await join_requests.create_index([("status", ASCENDING)])
 
+    outboxes = db["outboxes"]
+    await outboxes.create_index([("status", ASCENDING)])
+    await outboxes.create_index([("dedup_key", ASCENDING)], unique=False)
+    await outboxes.create_index([("created_at", ASCENDING)])
+
 
 async def create_mongo_client() -> AsyncMongoClient[Any]:
     client: AsyncMongoClient[Any] = AsyncMongoClient(get_settings().mongo_uri)
