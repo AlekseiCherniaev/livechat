@@ -1,6 +1,7 @@
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from functools import partial
+from typing import Any
 from uuid import UUID, uuid4
 
 from app.core.constants import AnalyticsEventType
@@ -15,10 +16,11 @@ class AnalyticsEvent:
     created_at: datetime = field(default_factory=partial(datetime.now, timezone.utc))
     id: UUID = field(default_factory=uuid4)
 
-    def to_payload(self) -> dict[str, any]:
-        data = asdict(self)
-        data["event_type"] = self.event_type.value
-        data["user_id"] = str(self.user_id) if self.user_id else None
-        data["room_id"] = str(self.room_id) if self.room_id else None
-        data["id"] = str(self.id)
-        return data
+    def to_payload(self) -> dict[str, str | Any]:
+        return {
+            "event_type": self.event_type.value,
+            "user_id": str(self.user_id) if self.user_id else None,
+            "room_id": str(self.room_id) if self.room_id else None,
+            "payload": self.payload,
+            "id": str(self.id),
+        }

@@ -17,7 +17,7 @@ async def create_outbox_analytics_event(
     event_type: AnalyticsEventType,
     user_id: UUID | None = None,
     room_id: UUID | None = None,
-    payload: dict | None = None,
+    payload: dict[str, str] | None = None,
     dedup_key: str | None = None,
 ) -> None:
     analytics = AnalyticsEvent(
@@ -40,7 +40,7 @@ async def create_outbox_notification_event(
     notification_type: NotificationType,
     user_id: UUID,
     source_id: UUID | None = None,
-    payload: dict | None = None,
+    payload: dict[str, str] | None = None,
     dedup_key: str | None = None,
 ) -> None:
     notif = Notification(

@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from functools import partial
 from typing import Any
@@ -19,9 +19,12 @@ class Notification:
     id: UUID = field(default_factory=uuid4)
 
     def to_payload(self) -> dict[str, Any]:
-        data = asdict(self)
-        data["user_id"] = str(self.user_id)
-        data["source_id"] = str(self.source_id)
-        data["id"] = str(self.id)
-        data["type"] = self.type.value
+        data = {
+            "user_id": str(self.user_id),
+            "payload": self.payload,
+            "read": self.read,
+            "source_id": str(self.source_id),
+            "id": str(self.id),
+            "type": self.type.value,
+        }
         return data
