@@ -1,6 +1,7 @@
+from datetime import datetime
 from typing import Any
 from uuid import UUID
-from datetime import datetime
+
 from app.domain.entities.websocket_session import WebSocketSession
 
 

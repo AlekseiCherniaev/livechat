@@ -1,14 +1,13 @@
 import asyncio
 from datetime import datetime, timedelta, timezone
-import structlog
-from typing import List
 
+import structlog
+
+from app.core.constants import AnalyticsEventType, OutboxMessageType, OutboxStatus
 from app.domain.entities.analytics_event import AnalyticsEvent
 from app.domain.entities.outbox import Outbox
 from app.domain.repos.message import MessageRepository
 from app.domain.repos.outbox import OutboxRepository
-from app.domain.entities.message import Message
-from app.core.constants import AnalyticsEventType, OutboxMessageType, OutboxStatus
 
 logger = structlog.get_logger(__name__)
 
@@ -43,7 +42,7 @@ class OutboxRepairJob:
 
         while True:
             try:
-                messages: List[Message] = await self._message_repo.get_since_all_rooms(
+                messages = await self._message_repo.get_since_all_rooms(
                     since=since, limit=self._batch_size, start_after=start_after
                 )
             except Exception as e:

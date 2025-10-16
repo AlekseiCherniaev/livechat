@@ -1,17 +1,17 @@
 import asyncio
 from datetime import datetime, timezone
 from typing import Any
+from uuid import UUID
 
 import orjson
-from uuid import UUID
 from redis.asyncio import Redis
 
 from app.adapters.db.models.redis.websocker_session import (
     session_to_dict,
     dict_to_session,
 )
-from app.domain.entities.websocket_session import WebSocketSession
 from app.core.settings import get_settings
+from app.domain.entities.websocket_session import WebSocketSession
 
 
 class RedisWebSocketSessionRepository:

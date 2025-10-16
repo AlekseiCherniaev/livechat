@@ -1,6 +1,6 @@
+import clickhouse_connect
 import structlog
 from clickhouse_connect.driver.asyncclient import AsyncClient
-import clickhouse_connect
 
 from app.core.settings import get_settings
 
