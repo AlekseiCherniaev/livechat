@@ -31,3 +31,7 @@ class OutboxRepository(Protocol):
     async def delete_by_id(
         self, outbox_id: UUID, db_session: Any | None = None
     ) -> None: ...
+
+    async def exists_by_dedup_keys(
+        self, dedup_keys: list[str], db_session: Any | None = None
+    ) -> list[str]: ...

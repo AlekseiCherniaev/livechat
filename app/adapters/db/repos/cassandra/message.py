@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
@@ -36,6 +37,29 @@ class CassandraMessageRepository:
         def _get() -> Message | None:
             msg = MessageByIdModel.objects(id=message_id).first()
             return msg.to_entity() if msg else None
+
+        return await asyncio.to_thread(_get)
+
+    async def get_since_all_rooms(
+        self,
+        since: datetime,
+        limit: int,
+        start_after: tuple[datetime, UUID] | None = None,
+        db_session: Any | None = None,
+    ) -> list[Message]:
+        def _get() -> list[Message]:
+            query = MessageModel.objects(created_at__gte=since)
+            if start_after:
+                last_created, last_id = start_after
+                query = query.filter(
+                    (MessageModel.created_at < last_created)
+                    | (
+                        (MessageModel.created_at == last_created)
+                        & (MessageModel.id < last_id)
+                    )
+                )
+            query = query.limit(limit)
+            return [msg.to_entity() for msg in query.all()]
 
         return await asyncio.to_thread(_get)
 

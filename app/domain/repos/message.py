@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Protocol, Any
 from uuid import UUID
 
@@ -9,6 +10,14 @@ class MessageRepository(Protocol):
 
     async def get_recent_by_room(
         self, room_id: UUID, limit: int, db_session: Any | None = None
+    ) -> list[Message]: ...
+
+    async def get_since_all_rooms(
+        self,
+        since: datetime,
+        limit: int,
+        start_after: tuple[datetime, UUID] | None = None,
+        db_session: Any | None = None,
     ) -> list[Message]: ...
 
     async def get_by_id(

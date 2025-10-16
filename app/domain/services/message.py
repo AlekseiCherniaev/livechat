@@ -50,6 +50,8 @@ class MessageService:
             )
             await self._message_repo.save(message=message, db_session=db_session)
 
+            # If writing to the Outbox fails (e.g., Mongo is unavailable), the analytics event won't be sent,
+            # but the Message itself is persisted. Missing events will be recovered later by the Outbox Repair Job.
             await create_outbox_analytics_event(
                 outbox_repo=self._outbox_repo,
                 event_type=AnalyticsEventType.MESSAGE_SENT,

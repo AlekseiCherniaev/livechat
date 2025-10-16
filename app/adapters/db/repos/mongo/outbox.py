@@ -19,8 +19,11 @@ class MongoOutboxRepository:
         self, outbox: Outbox, db_session: AsyncClientSession | None = None
     ) -> Outbox:
         doc = outbox_to_document(outbox)
-        await self._col.replace_one(
-            {"_id": doc["_id"]}, doc, upsert=True, session=db_session
+        await self._col.update_one(
+            {"dedup_key": outbox.dedup_key},
+            {"$setOnInsert": doc},
+            upsert=True,
+            session=db_session,
         )
         return outbox
 
@@ -93,3 +96,14 @@ class MongoOutboxRepository:
         self, outbox_id: UUID, db_session: AsyncClientSession | None = None
     ) -> None:
         await self._col.delete_one({"_id": str(outbox_id)}, session=db_session)
+
+    async def exists_by_dedup_keys(
+        self, dedup_keys: list[str], db_session: AsyncClientSession | None = None
+    ) -> list[str]:
+        cursor = self._col.find(
+            {"dedup_key": {"$in": dedup_keys}},
+            {"dedup_key": 1, "_id": 0},
+            session=db_session,
+        )
+        existing = [doc["dedup_key"] async for doc in cursor]
+        return existing
