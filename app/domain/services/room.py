@@ -186,44 +186,32 @@ class RoomService:
         if not join_requests:
             return []
 
-        # TODO optimize
-        result = []
-        for join_request in join_requests:
-            user = await self._user_repo.get_by_id(user_id=join_request.user_id)
-            room = await self._room_repo.get_by_id(room_id=join_request.room_id)
-            result.append(
-                JoinRequestPublicDTO(
-                    username=user.username,
-                    room_name=room.name,
-                    message=join_request.message,
-                )
+        return [
+            JoinRequestPublicDTO(
+                username=user.username,
+                room_name=room.name,
+                message=join_request.message,
             )
-
-        return result
+            for join_request, user, room in join_requests
+        ]
 
     async def list_user_join_requests(
         self, user_id: UUID
     ) -> list[JoinRequestPublicDTO]:
-        # TODO refactor
         join_requests = await self._join_repo.list_by_user(
             user_id=user_id, status=JoinRequestStatus.PENDING
         )
         if not join_requests:
             return []
 
-        result = []
-        for join_request in join_requests:
-            user = await self._user_repo.get_by_id(user_id=join_request.user_id)
-            room = await self._room_repo.get_by_id(room_id=join_request.room_id)
-            result.append(
-                JoinRequestPublicDTO(
-                    username=user.username,
-                    room_name=room.name,
-                    message=join_request.message,
-                )
+        return [
+            JoinRequestPublicDTO(
+                username=user.username,
+                room_name=room.name,
+                message=join_request.message,
             )
-
-        return result
+            for join_request, user, room in join_requests
+        ]
 
     async def search_rooms(self, query: str, limit: int) -> list[RoomPublicDTO]:
         rooms = await self._room_repo.search(query=query, limit=limit)

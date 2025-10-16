@@ -3,6 +3,8 @@ from uuid import UUID
 
 from app.core.constants import JoinRequestStatus
 from app.domain.entities.join_request import JoinRequest
+from app.domain.entities.room import Room
+from app.domain.entities.user import User
 
 
 class JoinRequestRepository(Protocol):
@@ -14,10 +16,10 @@ class JoinRequestRepository(Protocol):
 
     async def list_by_room(
         self, room_id: UUID, status: JoinRequestStatus
-    ) -> list[JoinRequest]: ...
+    ) -> list[tuple[JoinRequest, User, Room]]: ...
 
     async def list_by_user(
         self, user_id: UUID, status: JoinRequestStatus
-    ) -> list[JoinRequest]: ...
+    ) -> list[tuple[JoinRequest, User, Room]]: ...
 
     async def exists(self, room_id: UUID, user_id: UUID) -> bool: ...

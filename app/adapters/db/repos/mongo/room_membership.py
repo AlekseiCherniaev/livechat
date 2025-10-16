@@ -3,11 +3,11 @@ from uuid import UUID
 
 from pymongo.asynchronous.database import AsyncDatabase
 
+from app.adapters.db.models.mongo.room import document_to_room
 from app.adapters.db.models.mongo.room_membership import (
     room_membership_to_document,
 )
-from app.domain.dtos.room import RoomPublicDTO, room_to_dto
-from app.domain.dtos.user import UserPublicDTO, user_to_dto
+from app.adapters.db.models.mongo.user import document_to_user
 from app.domain.entities.room import Room
 from app.domain.entities.room_membership import RoomMembership
 from app.domain.entities.user import User
@@ -29,7 +29,7 @@ class MongoRoomMembershipRepository:
     async def delete(self, room_id: UUID, user_id: UUID) -> None:
         await self._col.delete_one({"room_id": str(room_id), "user_id": str(user_id)})
 
-    async def list_users(self, room_id: UUID) -> list[UserPublicDTO]:
+    async def list_users(self, room_id: UUID) -> list[User]:
         pipeline = [
             {"$match": {"room_id": str(room_id)}},
             {
@@ -43,25 +43,10 @@ class MongoRoomMembershipRepository:
             {"$unwind": "$user_info"},
         ]
         cursor = await self._col.aggregate(pipeline)
-        result = []
-        async for doc in cursor:
-            user_doc = doc["user_info"]
-            result.append(
-                user_to_dto(
-                    User(
-                        id=UUID(user_doc["_id"]),
-                        username=user_doc["username"],
-                        hashed_password=user_doc.get("hashed_password"),
-                        created_at=user_doc.get("created_at"),
-                        updated_at=user_doc.get("updated_at"),
-                        last_login_at=user_doc.get("last_login_at"),
-                        last_active=user_doc.get("last_active"),
-                    )
-                )
-            )
-        return result
 
-    async def list_rooms_for_user(self, user_id: UUID) -> list[RoomPublicDTO]:
+        return [document_to_user(doc["user_info"]) async for doc in cursor]
+
+    async def list_rooms_for_user(self, user_id: UUID) -> list[Room]:
         pipeline = [
             {"$match": {"user_id": str(user_id)}},
             {
@@ -75,24 +60,8 @@ class MongoRoomMembershipRepository:
             {"$unwind": "$room_info"},
         ]
         cursor = await self._col.aggregate(pipeline)
-        result = []
-        async for doc in cursor:
-            room_doc = doc["room_info"]
-            result.append(
-                room_to_dto(
-                    Room(
-                        id=UUID(room_doc["_id"]),
-                        name=room_doc["name"],
-                        description=room_doc.get("description"),
-                        is_public=room_doc["is_public"],
-                        participants_count=room_doc.get("participants_count", 0),
-                        created_by=UUID(room_doc["created_by"]),
-                        created_at=room_doc.get("created_at"),
-                        updated_at=room_doc.get("updated_at"),
-                    )
-                )
-            )
-        return result
+
+        return [document_to_room(doc["room_info"]) async for doc in cursor]
 
     async def exists(self, room_id: UUID, user_id: UUID) -> bool:
         doc = await self._col.find_one(
