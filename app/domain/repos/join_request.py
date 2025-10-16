@@ -1,4 +1,4 @@
-from typing import Protocol
+from typing import Protocol, Any
 from uuid import UUID
 
 from app.core.constants import JoinRequestStatus
@@ -8,18 +8,26 @@ from app.domain.entities.user import User
 
 
 class JoinRequestRepository(Protocol):
-    async def save(self, request: JoinRequest) -> JoinRequest: ...
+    async def save(
+        self, request: JoinRequest, db_session: Any | None = None
+    ) -> JoinRequest: ...
 
-    async def get_by_id(self, request_id: UUID) -> JoinRequest | None: ...
+    async def get_by_id(
+        self, request_id: UUID, db_session: Any | None = None
+    ) -> JoinRequest | None: ...
 
-    async def delete_by_id(self, request_id: UUID) -> None: ...
+    async def delete_by_id(
+        self, request_id: UUID, db_session: Any | None = None
+    ) -> None: ...
 
     async def list_by_room(
-        self, room_id: UUID, status: JoinRequestStatus
+        self, room_id: UUID, status: JoinRequestStatus, db_session: Any | None = None
     ) -> list[tuple[JoinRequest, User, Room]]: ...
 
     async def list_by_user(
-        self, user_id: UUID, status: JoinRequestStatus
+        self, user_id: UUID, status: JoinRequestStatus, db_session: Any | None = None
     ) -> list[tuple[JoinRequest, User, Room]]: ...
 
-    async def exists(self, room_id: UUID, user_id: UUID) -> bool: ...
+    async def exists(
+        self, room_id: UUID, user_id: UUID, db_session: Any | None = None
+    ) -> bool: ...
