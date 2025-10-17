@@ -1,4 +1,3 @@
-import asyncio
 from typing import Any
 
 from celery import Celery
@@ -28,11 +27,17 @@ mongo_client: AsyncMongoClient[Any] | None = None
 mongo_db: AsyncDatabase[Any] | None = None
 
 
-@celery_app.on_after_finalize.connect
-def init_clients(sender, **kwargs):
-    global redis_client, mongo_client, mongo_db
+async def get_redis_client():
+    global redis_client
+    if not redis_client:
+        redis_client = Redis.from_url(get_settings().redis_celery_backend_dsn)
+    return redis_client
 
-    loop = asyncio.get_event_loop()
-    redis_client = Redis.from_url(get_settings().redis_celery_backend_dsn)
-    mongo_client = loop.run_until_complete(create_mongo_client())
-    mongo_db = mongo_client[get_settings().mongo_dbname]
+
+async def get_mongo_db():
+    global mongo_db, mongo_client
+    if not mongo_client:
+        mongo_client = await create_mongo_client()
+    if not mongo_db:
+        mongo_db = mongo_client[get_settings().mongo_dbname]
+    return mongo_db
