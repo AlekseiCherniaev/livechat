@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from uuid import UUID
 
 import structlog
 from redis.exceptions import LockError
@@ -8,7 +9,7 @@ from app.adapters.db.repos.mongo.notification import MongoNotificationRepository
 from app.adapters.db.repos.mongo.outbox import MongoOutboxRepository
 from app.adapters.jobs.celery_app import celery_app, get_mongo_db, get_redis_client
 from app.adapters.jobs.outbox_repair import OutboxRepairJob
-from app.core.constants import OutboxMessageType
+from app.core.constants import OutboxMessageType, NotificationType, AnalyticsEventType
 from app.core.settings import get_settings
 from app.domain.entities.analytics_event import AnalyticsEvent
 from app.domain.entities.notification import Notification
@@ -71,13 +72,28 @@ async def process_outbox():
                 await outbox_repo.mark_in_progress(outbox_id=outbox.id)
                 try:
                     if outbox.type == OutboxMessageType.NOTIFICATION:
-                        notification = Notification(**outbox.payload)
+                        payload = outbox.payload
+                        notification = Notification(
+                            user_id=UUID(payload.get("user_id")),
+                            payload=payload.get("payload"),
+                            read=payload.get("read"),
+                            source_id=UUID(payload.get("source_id")),
+                            id=UUID(payload.get("id")),
+                            type=NotificationType(payload.get("type")),
+                        )
                         await notification_repo.save(notification)
                         await notification_sender.send(notification)
                         task_logger.info("Notification sent successfully")
 
                     elif outbox.type == OutboxMessageType.ANALYTICS:
-                        event = AnalyticsEvent(**outbox.payload)
+                        payload = outbox.payload
+                        event = AnalyticsEvent(
+                            event_type=AnalyticsEventType(payload.get("event_type")),
+                            user_id=UUID(payload.get("user_id")),
+                            room_id=UUID(payload.get("room_id")),
+                            payload=payload.get("payload"),
+                            id=UUID(payload.get("id")),
+                        )
                         await analytics_port.publish_event(event)
                         task_logger.info("Analytics event published successfully")
 
