@@ -16,7 +16,6 @@ from app.domain.exceptions.user import (
 from app.domain.exceptions.user_session import SessionNotFound, InvalidSession
 from app.domain.ports.password_hasher import PasswordHasherPort
 from app.domain.ports.transaction_manager import TransactionManager
-from app.domain.repos.notification import NotificationRepository
 from app.domain.repos.outbox import OutboxRepository
 from app.domain.repos.user import UserRepository
 from app.domain.repos.user_session import UserSessionRepository
@@ -32,7 +31,6 @@ class UserService:
         user_repo: UserRepository,
         session_repo: UserSessionRepository,
         ws_session_repo: WebSocketSessionRepository,
-        notif_repo: NotificationRepository,
         outbox_repo: OutboxRepository,
         password_hasher_port: PasswordHasherPort,
         transaction_manager: TransactionManager,
@@ -40,7 +38,6 @@ class UserService:
         self._user_repo = user_repo
         self._session_repo = session_repo
         self._ws_session_repo = ws_session_repo
-        self._notif_repo = notif_repo
         self._outbox_repo = outbox_repo
         self._password_hasher = password_hasher_port
         self._tm = transaction_manager
@@ -137,31 +134,6 @@ class UserService:
             )
 
             logger.bind(session_id=session_uuid).debug("Deleted session in repo")
-
-        await self._tm.run_in_transaction(_txn)
-
-    async def delete_user(self, user_id: UUID) -> None:
-        async def _txn(db_session: Any):
-            await self._notif_repo.delete_by_user_id(
-                user_id=user_id, db_session=db_session
-            )
-            await self._user_repo.delete_by_id(user_id=user_id, db_session=db_session)
-            await self._session_repo.delete_by_user_id(
-                user_id=user_id, db_session=db_session
-            )
-            await self._ws_session_repo.delete_by_user_id(
-                user_id=user_id, db_session=db_session
-            )
-
-            await create_outbox_analytics_event(
-                outbox_repo=self._outbox_repo,
-                event_type=AnalyticsEventType.USER_DELETED,
-                user_id=user_id,
-                dedup_key=f"user_delete:{user_id}",
-                db_session=db_session,
-            )
-
-            logger.bind(session_id=user_id).debug("Deleted user in repo")
 
         await self._tm.run_in_transaction(_txn)
 

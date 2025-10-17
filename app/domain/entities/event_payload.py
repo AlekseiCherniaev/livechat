@@ -1,11 +1,10 @@
 from dataclasses import dataclass
-from uuid import UUID
 
 
 @dataclass
 class EventPayload:
-    user_id: UUID
-    username: str
     timestamp: str
+    username: str | None = None
     content: str | None = None
     is_typing: bool | None = None
+    payload: dict[str, str] | None = None

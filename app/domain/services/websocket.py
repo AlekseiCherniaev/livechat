@@ -86,13 +86,14 @@ class WebSocketService:
         self, room_id: UUID, user_id: UUID, username: str, is_typing: bool
     ) -> None:
         payload = EventPayload(
-            user_id=user_id,
             username=username,
             is_typing=is_typing,
             timestamp=datetime.now(timezone.utc).isoformat(),
         )
         await self._conn.broadcast_event(
-            room_id=room_id, event_type=BroadcastEventType.USER_TYPING, payload=payload
+            room_id=room_id,
+            event_type=BroadcastEventType.USER_TYPING,
+            event_payload=payload,
         )
 
     async def update_ping(self, session_id: UUID) -> None:

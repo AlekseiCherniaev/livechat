@@ -26,7 +26,7 @@ class TestNotificationService:
                 user_id=user_id,
                 payload={"msg": "hi"},
                 read=False,
-                type=NotificationType.MESSAGE_SENT,
+                type=NotificationType.JOIN_REQUEST_ACCEPTED,
             )
         ]
 
@@ -62,7 +62,7 @@ class TestNotificationService:
             user_id=uuid4(),
             payload={"msg": "test"},
             read=False,
-            type=NotificationType.MESSAGE_SENT,
+            type=NotificationType.JOIN_REQUEST_ACCEPTED,
         )
         notif_repo.get_by_id.return_value = notification
 

@@ -126,7 +126,6 @@ class TestMessageService:
         connection_port.broadcast_event.assert_awaited_once()
         args, kwargs = connection_port.broadcast_event.await_args
         assert kwargs["event_type"] == BroadcastEventType.MESSAGE_DELETED
-        assert kwargs["payload"].user_id == user_id
 
     async def test_delete_message_user_not_found(self, service, user_repo):
         user_repo.get_by_id.return_value = None

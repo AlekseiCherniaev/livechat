@@ -329,7 +329,7 @@ class RoomService:
             else:
                 request.status = JoinRequestStatus.REJECTED
                 notif_type = NotificationType.JOIN_REQUEST_REJECTED
-                event_type = AnalyticsEventType.JOIN_REQUEST_ACCEPTED
+                event_type = AnalyticsEventType.JOIN_REQUEST_REJECTED
 
             request.updated_at = datetime.now(timezone.utc)
             request.handled_by = room.created_by

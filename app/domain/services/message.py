@@ -70,7 +70,6 @@ class MessageService:
 
         message_create = await self._tm.run_in_transaction(_txn)
         payload = EventPayload(
-            user_id=user_id,
             username=user.username,
             content=message_create.content,
             timestamp=datetime.now(timezone.utc).isoformat(),
@@ -78,7 +77,7 @@ class MessageService:
         await self._connection_port.broadcast_event(
             room_id=room_id,
             event_type=BroadcastEventType.MESSAGE_CREATED,
-            payload=payload,
+            event_payload=payload,
         )
 
     async def edit_message(
@@ -116,7 +115,6 @@ class MessageService:
 
         message_update = await self._tm.run_in_transaction(_txn)
         payload = EventPayload(
-            user_id=user_id,
             username=user.username,
             content=message_update.content,
             timestamp=datetime.now(timezone.utc).isoformat(),
@@ -124,7 +122,7 @@ class MessageService:
         await self._connection_port.broadcast_event(
             room_id=message.room_id,
             event_type=BroadcastEventType.MESSAGE_EDITED,
-            payload=payload,
+            event_payload=payload,
         )
 
     async def delete_message(self, message_id: UUID, user_id: UUID) -> None:
@@ -158,14 +156,13 @@ class MessageService:
 
         await self._tm.run_in_transaction(_txn)
         payload = EventPayload(
-            user_id=user_id,
             username=user.username,
             timestamp=datetime.now(timezone.utc).isoformat(),
         )
         await self._connection_port.broadcast_event(
             room_id=message.room_id,
             event_type=BroadcastEventType.MESSAGE_DELETED,
-            payload=payload,
+            event_payload=payload,
         )
 
     async def get_recent_messages(
