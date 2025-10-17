@@ -54,7 +54,7 @@ class Settings(BaseSettings):
     @computed_field  # type: ignore
     @property
     def redis_app_dsn(self) -> str:
-        return f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db}"
+        return f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db_app}"
 
     celery_redis_repair_lock_key: str = "outbox_repair_lock"
     celery_redis_repair_lock_key_timeout: int = 60 * 5
