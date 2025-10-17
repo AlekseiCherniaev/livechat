@@ -28,14 +28,14 @@ class MessageService:
         self,
         message_repo: MessageRepository,
         user_repo: UserRepository,
-        connection_port: ConnectionPort,
         outbox_repo: OutboxRepository,
+        connection_port: ConnectionPort,
         transaction_manager: TransactionManager,
     ):
         self._message_repo = message_repo
         self._user_repo = user_repo
-        self._connection_port = connection_port
         self._outbox_repo = outbox_repo
+        self._connection_port = connection_port
         self._tm = transaction_manager
 
     async def send_message(self, room_id: UUID, user_id: UUID, content: str) -> None:

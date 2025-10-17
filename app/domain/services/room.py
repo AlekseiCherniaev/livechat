@@ -51,16 +51,16 @@ class RoomService:
         self,
         room_repo: RoomRepository,
         user_repo: UserRepository,
-        join_repo: JoinRequestRepository,
-        membership_repo: RoomMembershipRepository,
+        join_request_repo: JoinRequestRepository,
+        room_membership_repo: RoomMembershipRepository,
         outbox_repo: OutboxRepository,
         analytics_port: AnalyticsPort,
         transaction_manager: TransactionManager,
     ):
         self._room_repo = room_repo
         self._user_repo = user_repo
-        self._join_repo = join_repo
-        self._membership_repo = membership_repo
+        self._join_repo = join_request_repo
+        self._membership_repo = room_membership_repo
         self._outbox_repo = outbox_repo
         self._analytics = analytics_port
         self._tm = transaction_manager

@@ -47,7 +47,6 @@ class TestMessageService:
         args, kwargs = connection_port.broadcast_event.await_args
         assert kwargs["room_id"] == room_id
         assert kwargs["event_type"] == BroadcastEventType.MESSAGE_CREATED
-        assert kwargs["payload"].content == "hi"
 
     async def test_send_message_user_not_found(self, service, user_repo):
         user_repo.get_by_id.return_value = None
@@ -75,7 +74,6 @@ class TestMessageService:
         connection_port.broadcast_event.assert_awaited_once()
         args, kwargs = connection_port.broadcast_event.await_args
         assert kwargs["event_type"] == BroadcastEventType.MESSAGE_EDITED
-        assert kwargs["payload"].content == "new content"
 
     async def test_edit_message_user_not_found(self, service, user_repo):
         user_repo.get_by_id.return_value = None

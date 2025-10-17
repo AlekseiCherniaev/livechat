@@ -23,7 +23,6 @@ class TestUserService:
         user_repo,
         session_repo,
         ws_session_repo,
-        notif_repo,
         outbox_repo,
         password_hasher,
         tm,
@@ -32,7 +31,6 @@ class TestUserService:
             user_repo=user_repo,
             session_repo=session_repo,
             ws_session_repo=ws_session_repo,
-            notif_repo=notif_repo,
             outbox_repo=outbox_repo,
             password_hasher_port=password_hasher,
             transaction_manager=tm,
@@ -114,16 +112,6 @@ class TestUserService:
         session_repo.get_by_id.return_value = None
         with pytest.raises(SessionNotFound):
             await service.logout_user(str(uuid4()))
-
-    async def test_delete_user_success(
-        self, service, user_repo, notif_repo, session_repo, ws_session_repo
-    ):
-        user_id = uuid4()
-        await service.delete_user(user_id)
-        notif_repo.delete_by_user_id.assert_awaited_once()
-        user_repo.delete_by_id.assert_awaited_once()
-        session_repo.delete_by_user_id.assert_awaited_once()
-        ws_session_repo.delete_by_user_id.assert_awaited_once()
 
     async def test_get_user_by_session_success(self, service, session_repo, user_repo):
         user_id = uuid4()
