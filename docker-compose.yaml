@@ -25,46 +25,54 @@ services:
       start_period: 40s
     restart: unless-stopped
 
-  celery_worker:
+  celery-worker:
     build: .
-    container_name: celery_worker
-    command: celery -A app.adapters.jobs.celery_app.celery_app worker -P asyncio --loglevel=info
+    container_name: celery-worker
+    command: /app/.venv/bin/celery -A app.adapters.jobs.celery_app.celery_app worker --loglevel=info
+    user: "1000:1000"
     env_file:
       - .env
     networks:
       - common_network
     depends_on:
-      - redis
-      - mongodb
-      - cassandra
-    healthcheck:
-      test: [ "CMD", "pgrep", "-f", "celery" ]
-      interval: 30s
-      retries: 3
+      clickhouse:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      cassandra-migrations:
+        condition: service_completed_successfully
     restart: unless-stopped
 
-  celery_beat:
+  celery-beat:
     build: .
-    container_name: celery_beat
-    command: celery -A app.adapters.jobs.celery_app.celery_app beat --loglevel=info
+    container_name: celery-beat
+    command: /app/.venv/bin/celery -A app.adapters.jobs.celery_app.celery_app beat --loglevel=info
     env_file:
       - .env
     networks:
       - common_network
     depends_on:
-      - redis
-      - mongodb
-      - cassandra
-    healthcheck:
-      test: [ "CMD", "pgrep", "-f", "celery" ]
-      interval: 30s
-      retries: 3
+      clickhouse:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      cassandra-migrations:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   mongodb:
     image: mongo:7.0
     container_name: mongodb
-    command: ["--replSet", "rs0", "--bind_ip_all"]
+    command: [
+      "--replSet", "rs0",
+      "--bind_ip_all",
+      "--auth",
+      "--keyFile", "/data/keyfile.pem"
+    ]
     ports:
       - "27017:27017"
     environment:
@@ -73,6 +81,7 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
     volumes:
       - mongodb_data:/data/db
+      - ./docker/mongo/keyfile.pem:/data/keyfile.pem:ro
     networks:
       - common_network
     healthcheck:
@@ -83,14 +92,42 @@ services:
     deploy:
       resources:
         limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
           cpus: "0.25"
           memory: 256M
-        reservations:
-          cpus: "0.10"
-          memory: 128M
-    mem_limit: 256m
-    cpus: 0.25
+    mem_limit: 512m
+    cpus: 0.5
     restart: unless-stopped
+
+  mongodb-init:
+    image: mongo:7.0
+    container_name: mongodb-init
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+    entrypoint: >
+      bash -c "
+        until mongosh --host mongodb -u ${MONGO_INITDB_ROOT_USERNAME} -p ${MONGO_INITDB_ROOT_PASSWORD} --authenticationDatabase admin --eval 'db.adminCommand(\"ping\")' >/dev/null 2>&1;
+        do sleep 1; done;
+        echo '✅ Mongo is up, initiating replica set...';
+        mongosh --host mongodb -u ${MONGO_INITDB_ROOT_USERNAME} -p ${MONGO_INITDB_ROOT_PASSWORD} --authenticationDatabase admin --eval '
+          try {
+            rs.initiate({
+              _id: \"rs0\",
+              members: [{ _id: 0, host: \"mongodb:27017\" }]
+            });
+            print(\"Replica set initialized\");
+          } catch(e) { print(\"Replica set already initialized or error: \", e) }
+        '
+      "
+    networks:
+      - common_network
+    restart: "no"
 
   redis:
     image: redis:7-alpine

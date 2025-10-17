@@ -24,3 +24,4 @@ dmypy.json
 .coverage
 .coverage.*
 temp.txt
+docker/mongo/keyfile.pem
