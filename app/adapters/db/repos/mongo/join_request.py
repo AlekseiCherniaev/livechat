@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Sequence, Mapping
 from uuid import UUID
 
 from pymongo.asynchronous.client_session import AsyncClientSession
@@ -48,7 +48,7 @@ class MongoJoinRequestRepository:
         status: JoinRequestStatus,
         db_session: AsyncClientSession | None = None,
     ) -> list[tuple[JoinRequest, User, Room]]:
-        pipeline = [
+        pipeline: Sequence[Mapping[str, Any]] = [
             {"$match": {"room_id": str(room_id), "status": status.value}},
             {
                 "$lookup": {
@@ -87,7 +87,7 @@ class MongoJoinRequestRepository:
         status: JoinRequestStatus,
         db_session: AsyncClientSession | None = None,
     ) -> list[tuple[JoinRequest, User, Room]]:
-        pipeline = [
+        pipeline: Sequence[Mapping[str, Any]] = [
             {"$match": {"user_id": str(user_id), "status": status.value}},
             {
                 "$lookup": {

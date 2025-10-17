@@ -24,7 +24,7 @@ def document_to_notification(doc: dict[str, Any]) -> Notification:
         id=UUID(doc["_id"]),
         user_id=UUID(doc["user_id"]),
         type=NotificationType(doc["type"]),
-        payload=doc.get("payload"),
+        payload=doc.get("payload", {}),
         read=doc.get("read", False),
         source_id=doc.get("source_id") and UUID(doc.get("source_id")),
         created_at=doc.get("created_at", datetime.now(timezone.utc)),

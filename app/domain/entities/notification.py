@@ -11,7 +11,7 @@ from app.core.constants import NotificationType
 class Notification:
     user_id: UUID
     type: NotificationType
-    payload: dict[str, str] | None = None
+    payload: dict[str, str]
     read: bool = False
     source_id: UUID | None = None
     created_at: datetime = field(default_factory=partial(datetime.now, timezone.utc))

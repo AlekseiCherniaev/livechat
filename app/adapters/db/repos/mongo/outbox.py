@@ -49,7 +49,9 @@ class MongoOutboxRepository:
         retry: bool = False,
         db_session: AsyncClientSession | None = None,
     ) -> None:
-        update_doc = {"$set": {"status": OutboxStatus.IN_PROGRESS.value}}
+        update_doc: dict[str, Any] = {
+            "$set": {"status": OutboxStatus.IN_PROGRESS.value}
+        }
         if retry:
             update_doc["$inc"] = {"retries": 1}
         await self._col.update_one(

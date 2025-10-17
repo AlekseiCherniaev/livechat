@@ -8,7 +8,7 @@ from app.domain.entities.notification import Notification
 @dataclass
 class NotificationPublicDTO:
     type: NotificationType
-    payload: dict[str, str] | None
+    payload: dict[str, str]
     read: bool
     source_id: UUID | None
     id: UUID

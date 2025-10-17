@@ -41,8 +41,8 @@ async def create_outbox_notification_event(
     outbox_repo: OutboxRepository,
     notification_type: NotificationType,
     user_id: UUID,
+    payload: dict[str, str],
     source_id: UUID | None = None,
-    payload: dict[str, str] | None = None,
     dedup_key: str | None = None,
     db_session: Any | None = None,
 ) -> None:

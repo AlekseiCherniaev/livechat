@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Mapping, Sequence
 from uuid import UUID
 
 from pymongo.asynchronous.client_session import AsyncClientSession
@@ -44,7 +44,7 @@ class MongoRoomMembershipRepository:
     async def list_users(
         self, room_id: UUID, db_session: AsyncClientSession | None = None
     ) -> list[User]:
-        pipeline = [
+        pipeline: Sequence[Mapping[str, Any]] = [
             {"$match": {"room_id": str(room_id)}},
             {
                 "$lookup": {
@@ -63,7 +63,7 @@ class MongoRoomMembershipRepository:
     async def list_rooms_for_user(
         self, user_id: UUID, db_session: AsyncClientSession | None = None
     ) -> list[Room]:
-        pipeline = [
+        pipeline: Sequence[Mapping[str, Any]] = [
             {"$match": {"user_id": str(user_id)}},
             {
                 "$lookup": {
