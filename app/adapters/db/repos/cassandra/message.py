@@ -7,6 +7,7 @@ from app.adapters.db.models.cassandra.message import (
     MessageModel,
     MessageByUserModel,
     MessageByIdModel,
+    MessageGlobalModel,
 )
 from app.domain.entities.message import Message
 
@@ -17,6 +18,7 @@ class CassandraMessageRepository:
             MessageModel.from_entity(message).save()
             MessageByUserModel.from_entity(message).save()
             MessageByIdModel.from_entity(message).save()
+            MessageGlobalModel.from_entity(message).save()
 
         await asyncio.to_thread(_save)
 
@@ -48,14 +50,14 @@ class CassandraMessageRepository:
         db_session: Any | None = None,
     ) -> list[Message]:
         def _get() -> list[Message]:
-            query = MessageModel.objects(created_at__gte=since)
+            query = MessageGlobalModel.objects(partition="all", created_at__gte=since)
             if start_after:
                 last_created, last_id = start_after
                 query = query.filter(
-                    (MessageModel.created_at < last_created)
+                    (MessageGlobalModel.created_at < last_created)
                     | (
-                        (MessageModel.created_at == last_created)
-                        & (MessageModel.id < last_id)
+                        (MessageGlobalModel.created_at == last_created)
+                        & (MessageGlobalModel.id < last_id)
                     )
                 )
             query = query.limit(limit)
@@ -82,6 +84,12 @@ class CassandraMessageRepository:
             ).first()
             if msg_user:
                 msg_user.delete()
+
+            msg_global = MessageGlobalModel.objects(
+                partition="all", created_at=msg_by_id.created_at, id=msg_by_id.id
+            ).first()
+            if msg_global:
+                msg_global.delete()
 
             msg_by_id.delete()
 
