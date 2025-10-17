@@ -3,7 +3,6 @@ from uuid import UUID
 
 from app.core.constants import BroadcastEventType
 from app.domain.entities.event_payload import EventPayload
-from app.domain.entities.user import User
 from app.domain.entities.websocket_session import WebSocketSession
 
 
@@ -18,7 +17,7 @@ class ConnectionPort(Protocol):
 
     async def disconnect_user_from_room(self, user_id: UUID, room_id: UUID) -> None: ...
 
-    async def list_users_in_room(self, room_id: UUID) -> list[User]: ...
+    async def list_active_user_ids_in_room(self, room_id: UUID) -> list[UUID]: ...
 
     async def update_ping(self, session_id: UUID) -> None: ...
 
