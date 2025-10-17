@@ -36,12 +36,26 @@ class RedisConnectionPort(ConnectionPort):
         await self._redis.srem(f"ws:user:{session.user_id}:rooms", str(session.room_id))
 
     async def broadcast_event(
-        self, room_id: UUID, event_type: BroadcastEventType, payload: EventPayload
+        self, room_id: UUID, event_type: BroadcastEventType, event_payload: EventPayload
     ) -> None:
         channel = f"ws:room:{room_id}"
         message = {
             "event_type": event_type.value,
-            "payload": payload.__dict__,
+            "payload": {
+                "username": event_payload.username,
+                "content": event_payload.content,
+                "is_typing": event_payload.is_typing,
+            },
+        }
+        await self._redis.publish(channel, orjson.dumps(message))
+
+    async def send_event_to_user(
+        self, user_id: UUID, event_type: BroadcastEventType, event_payload: EventPayload
+    ) -> None:
+        channel = f"ws:user:{user_id}:notifications"
+        message = {
+            "event_type": event_type.value,
+            "payload": event_payload.payload,
         }
         await self._redis.publish(channel, orjson.dumps(message))
 
