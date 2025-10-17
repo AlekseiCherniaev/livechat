@@ -17,7 +17,7 @@ class OutboxRepository(Protocol):
     ) -> list[Outbox]: ...
 
     async def mark_in_progress(
-        self, outbox_id: UUID, db_session: Any | None = None
+        self, outbox_id: UUID, retry: bool = False, db_session: Any | None = None
     ) -> None: ...
 
     async def mark_sent(

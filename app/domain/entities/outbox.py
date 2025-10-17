@@ -11,7 +11,6 @@ class Outbox:
     type: OutboxMessageType
     status: OutboxStatus
     payload: dict[str, Any]
-    sent: bool = False
     dedup_key: str | None = None
     retries: int = 0
     max_retries: int = 5
