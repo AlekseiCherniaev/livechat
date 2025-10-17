@@ -12,7 +12,6 @@ def outbox_to_document(outbox: Outbox) -> dict[str, Any]:
         "type": outbox.type.value,
         "status": outbox.status.value,
         "payload": outbox.payload,
-        "sent": outbox.sent,
         "dedup_key": outbox.dedup_key,
         "retries": outbox.retries,
         "max_retries": outbox.max_retries,
@@ -21,13 +20,13 @@ def outbox_to_document(outbox: Outbox) -> dict[str, Any]:
         "created_at": outbox.created_at,
     }
 
+
 def document_to_outbox(doc: dict[str, Any]) -> Outbox:
     return Outbox(
         id=UUID(doc["_id"]),
         type=OutboxMessageType(doc["type"]),
         status=OutboxStatus(doc["status"]),
         payload=doc.get("payload", {}),
-        sent=doc.get("sent", False),
         dedup_key=doc.get("dedup_key"),
         retries=doc.get("retries", 0),
         max_retries=doc.get("max_retries", 5),
