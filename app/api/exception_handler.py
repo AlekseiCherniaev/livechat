@@ -2,16 +2,31 @@ from fastapi import Request, FastAPI
 from fastapi.responses import JSONResponse
 from starlette import status
 
-from app.domain.exceptions.user_session import (
-    SessionNotFound,
-    NoSessionCookie,
-    InvalidSession,
-)
 from app.domain.exceptions.user import (
     UserAlreadyExists,
     UserNotFound,
     UserInvalidCredentials,
 )
+from app.domain.exceptions.user_session import (
+    SessionNotFound,
+    NoSessionCookie,
+    InvalidSession,
+)
+from app.domain.exceptions.websocket_session import WebSocketSessionNotFound
+from app.domain.exceptions.room import (
+    RoomNotFound,
+    RoomAlreadyExists,
+    NoChangesDetected,
+)
+from app.domain.exceptions.join_request import (
+    JoinRequestNotFound,
+    JoinRequestAlreadyExists,
+)
+from app.domain.exceptions.message import (
+    MessageNotFound,
+    MessagePermissionError,
+)
+from app.domain.exceptions.notification import NotificationNotFound
 
 EXCEPTION_STATUS_MAP: dict[type[Exception], int] = {
     UserAlreadyExists: status.HTTP_400_BAD_REQUEST,
@@ -20,6 +35,15 @@ EXCEPTION_STATUS_MAP: dict[type[Exception], int] = {
     SessionNotFound: status.HTTP_404_NOT_FOUND,
     NoSessionCookie: status.HTTP_401_UNAUTHORIZED,
     InvalidSession: status.HTTP_401_UNAUTHORIZED,
+    WebSocketSessionNotFound: status.HTTP_404_NOT_FOUND,
+    RoomNotFound: status.HTTP_404_NOT_FOUND,
+    RoomAlreadyExists: status.HTTP_400_BAD_REQUEST,
+    NoChangesDetected: status.HTTP_400_BAD_REQUEST,
+    JoinRequestNotFound: status.HTTP_404_NOT_FOUND,
+    JoinRequestAlreadyExists: status.HTTP_400_BAD_REQUEST,
+    NotificationNotFound: status.HTTP_404_NOT_FOUND,
+    MessageNotFound: status.HTTP_404_NOT_FOUND,
+    MessagePermissionError: status.HTTP_403_FORBIDDEN,
 }
 
 
