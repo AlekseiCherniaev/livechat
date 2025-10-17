@@ -5,6 +5,7 @@ from asgi_lifespan._types import ASGIApp
 from cassandra.cluster import Cluster
 from cassandra.cqlengine import connection
 from cassandra.cqlengine.management import sync_table
+from cassandra.query import dict_factory
 from fastapi import FastAPI
 from httpx import AsyncClient, ASGITransport
 from pymongo import AsyncMongoClient
@@ -16,15 +17,18 @@ from testcontainers.clickhouse import ClickHouseContainer
 from testcontainers.mongodb import MongoDbContainer
 from testcontainers.redis import RedisContainer
 
-from app.adapters.db.models.cassandra_message import (
+from app.adapters.db.models.cassandra.message import (
     MessageByUserModel,
     MessageModel,
     MessageByIdModel,
+    MessageGlobalModel,
 )
+from app.api.di import get_transaction_manager
 from app.app import init_app
 from app.core import settings as settings_module
 from app.core.constants import Environment
 from app.core.settings import Settings
+from app.domain.ports.transaction_manager import TransactionManager
 
 
 @fixture(scope="session")
@@ -78,8 +82,8 @@ def cassandra_session(cassandra_container):
     port = cassandra_container["port"]
     cluster = Cluster([host], port=port)
     session = cluster.connect()
-
-    keyspace = "chat_messages"
+    session.row_factory = dict_factory
+    keyspace = "livechat"
     session.execute(
         f"""
         CREATE KEYSPACE IF NOT EXISTS {keyspace}
@@ -92,6 +96,7 @@ def cassandra_session(cassandra_container):
     sync_table(MessageModel)
     sync_table(MessageByUserModel)
     sync_table(MessageByIdModel)
+    sync_table(MessageGlobalModel)
 
     yield session
 
@@ -103,10 +108,10 @@ def cassandra_session(cassandra_container):
 def clickhouse_container():
     with ClickHouseContainer("clickhouse/clickhouse-server:24.8") as container:
         host = container.get_container_host_ip()
-        port = int(container.get_exposed_port(8123))
+        port = container.get_exposed_port(8123)
         yield {
             "host": host,
-            "port": int(port),
+            "port": port,
             "username": container.username,
             "password": container.password,
         }
@@ -129,10 +134,9 @@ def override_settings(
         mongo_initdb_root_password=mongo_container["password"],
         redis_host=redis_container["host"],
         redis_port=redis_container["port"],
-        redis_db=0,
         cassandra_contact_point=cassandra_container["host"],
         cassandra_port=cassandra_container["port"],
-        cassandra_keyspace="chat_messages",
+        cassandra_keyspace="livechat",
         clickhouse_host=clickhouse_container["host"],
         clickhouse_tcp_port=clickhouse_container["port"],
         clickhouse_user=clickhouse_container["username"],
@@ -141,10 +145,20 @@ def override_settings(
     monkeypatch.setattr(settings_module, "Settings", lambda: test_settings)
 
 
+class DummyTransactionManager:
+    async def run_in_transaction(self, func, *args, **kwargs):
+        return await func(db_session=None, *args, **kwargs)
+
+
+def get_dummy_transaction_manager() -> TransactionManager:
+    return DummyTransactionManager()
+
+
 @fixture
 def configured_app(override_settings) -> FastAPI:
     settings_module.get_settings.cache_clear()
     app = init_app()
+    app.dependency_overrides[get_transaction_manager] = get_dummy_transaction_manager
     return app
 
 

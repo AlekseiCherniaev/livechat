@@ -41,7 +41,9 @@ class Settings(BaseSettings):
     @computed_field  # type: ignore
     @property
     def mongo_uri(self) -> str:
-        return f"mongodb://{self.mongo_initdb_root_username}:{self.mongo_initdb_root_password}@{self.mongo_host}:{self.mongo_port}?authSource=admin"
+        if self.environment == Environment.TEST:
+            return f"mongodb://{self.mongo_initdb_root_username}:{self.mongo_initdb_root_password}@{self.mongo_host}:{self.mongo_port}?authSource=admin"
+        return f"mongodb://{self.mongo_initdb_root_username}:{self.mongo_initdb_root_password}@{self.mongo_host}:{self.mongo_port}?replicaSet=rs0&authSource=admin"
 
     redis_host: str = "localhost"
     redis_port: int = 6379
