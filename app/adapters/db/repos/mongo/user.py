@@ -26,13 +26,13 @@ class MongoUserRepository:
         self, user_id: UUID, db_session: AsyncClientSession | None = None
     ) -> User | None:
         doc = await self._col.find_one({"_id": str(user_id)}, session=db_session)
-        return document_to_user(doc=doc) if doc else None
+        return doc and document_to_user(doc=doc)
 
     async def get_by_username(
         self, username: str, db_session: AsyncClientSession | None = None
     ) -> User | None:
         doc = await self._col.find_one({"username": username}, session=db_session)
-        return document_to_user(doc=doc) if doc else None
+        return doc and document_to_user(doc=doc)
 
     async def update_last_active(
         self, user_id: UUID, db_session: AsyncClientSession | None = None

@@ -21,8 +21,8 @@ class RedisConnectionPort(ConnectionPort):
 
         session_data = orjson.dumps(session.__dict__)
         await self._redis.set(session_key, session_data)
-        await self._redis.sadd(room_key, str(session.user_id))
-        await self._redis.sadd(user_rooms_key, str(session.room_id))
+        await self._redis.sadd(room_key, str(session.user_id))  # type: ignore[misc]
+        await self._redis.sadd(user_rooms_key, str(session.room_id))  # type: ignore[misc]
 
     async def disconnect(self, session_id: UUID) -> None:
         session_key = f"ws:session:{session_id}"
@@ -32,8 +32,8 @@ class RedisConnectionPort(ConnectionPort):
 
         session = WebSocketSession(**orjson.loads(session_data))
         await self._redis.delete(session_key)
-        await self._redis.srem(f"ws:room:{session.room_id}:users", str(session.user_id))
-        await self._redis.srem(f"ws:user:{session.user_id}:rooms", str(session.room_id))
+        await self._redis.srem(f"ws:room:{session.room_id}:users", str(session.user_id))  # type: ignore[misc]
+        await self._redis.srem(f"ws:user:{session.user_id}:rooms", str(session.room_id))  # type: ignore[misc]
 
     async def broadcast_event(
         self, room_id: UUID, event_type: BroadcastEventType, event_payload: EventPayload
@@ -62,12 +62,12 @@ class RedisConnectionPort(ConnectionPort):
     async def disconnect_user_from_room(self, user_id: UUID, room_id: UUID) -> None:
         room_key = f"ws:room:{room_id}:users"
         user_rooms_key = f"ws:user:{user_id}:rooms"
-        await self._redis.srem(room_key, str(user_id))
-        await self._redis.srem(user_rooms_key, str(room_id))
+        await self._redis.srem(room_key, str(user_id))  # type: ignore[misc]
+        await self._redis.srem(user_rooms_key, str(room_id))  # type: ignore[misc]
 
     async def list_active_user_ids_in_room(self, room_id: UUID) -> list[UUID]:
         room_key = f"ws:room:{room_id}:users"
-        user_ids = await self._redis.smembers(room_key)
+        user_ids = await self._redis.smembers(room_key)  # type: ignore[misc]
         return [UUID(uid) for uid in user_ids]
 
     async def update_ping(self, session_id: UUID) -> None:
@@ -81,5 +81,5 @@ class RedisConnectionPort(ConnectionPort):
 
     async def is_user_online(self, user_id: UUID) -> bool:
         user_rooms_key = f"ws:user:{user_id}:rooms"
-        rooms = await self._redis.scard(user_rooms_key)
+        rooms = await self._redis.scard(user_rooms_key)  # type: ignore[misc]
         return rooms > 0

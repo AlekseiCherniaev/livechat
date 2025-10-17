@@ -30,7 +30,7 @@ class MongoRoomRepository:
         self, room_id: UUID, db_session: AsyncClientSession | None = None
     ) -> Room | None:
         doc = await self._col.find_one({"_id": str(room_id)}, session=db_session)
-        return document_to_room(doc) if doc else None
+        return doc and document_to_room(doc)
 
     async def search(
         self, query: str, limit: int, db_session: AsyncClientSession | None = None

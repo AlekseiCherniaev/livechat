@@ -38,7 +38,7 @@ class CassandraMessageRepository:
     ) -> Message | None:
         def _get() -> Message | None:
             msg = MessageByIdModel.objects(id=message_id).first()
-            return msg.to_entity() if msg else None
+            return msg and msg.to_entity()
 
         return await asyncio.to_thread(_get)
 

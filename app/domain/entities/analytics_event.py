@@ -19,8 +19,8 @@ class AnalyticsEvent:
     def to_payload(self) -> dict[str, Any]:
         return {
             "event_type": self.event_type.value,
-            "user_id": str(self.user_id) if self.user_id else None,
-            "room_id": str(self.room_id) if self.room_id else None,
+            "user_id": self.user_id and str(self.user_id),
+            "room_id": self.room_id and str(self.room_id),
             "payload": self.payload,
             "id": str(self.id),
         }

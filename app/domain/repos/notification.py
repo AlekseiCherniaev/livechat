@@ -11,7 +11,7 @@ class NotificationRepository(Protocol):
 
     async def get_by_id(
         self, notification_id: UUID, db_session: Any | None = None
-    ) -> Notification: ...
+    ) -> Notification | None: ...
 
     async def get_user_notifications(
         self,

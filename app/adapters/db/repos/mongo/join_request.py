@@ -35,7 +35,7 @@ class MongoJoinRequestRepository:
         self, request_id: UUID, db_session: AsyncClientSession | None = None
     ) -> JoinRequest | None:
         doc = await self._col.find_one({"_id": str(request_id)}, session=db_session)
-        return document_to_join_request(doc) if doc else None
+        return doc and document_to_join_request(doc)
 
     async def delete_by_id(
         self, request_id: UUID, db_session: AsyncClientSession | None = None

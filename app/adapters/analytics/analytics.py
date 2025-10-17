@@ -24,8 +24,8 @@ class ClickHouseAnalyticsRepository:
                 [
                     str(event.id),
                     event.event_type.value,
-                    str(event.user_id) if event.user_id else None,
-                    str(event.room_id) if event.room_id else None,
+                    event.user_id and str(event.user_id),
+                    event.room_id and str(event.room_id),
                     event.created_at,
                     payload_serialized,
                 ]

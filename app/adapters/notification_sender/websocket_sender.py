@@ -15,7 +15,7 @@ class WebSocketNotificationSender(NotificationSenderPort):
         event_payload = EventPayload(
             payload={
                 "notification_type": notification.type.value,
-                "payload": notification.payload,
+                "payload": notification.payload or {},
             },
             timestamp=datetime.now(timezone.utc).isoformat(),
         )

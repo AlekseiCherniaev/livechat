@@ -32,7 +32,7 @@ class MongoNotificationRepository:
         doc = await self._col.find_one(
             {"_id": str(notification_id)}, session=db_session
         )
-        return document_to_notification(doc) if doc else None
+        return doc and document_to_notification(doc)
 
     async def get_user_notifications(
         self,

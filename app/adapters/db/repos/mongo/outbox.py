@@ -31,7 +31,7 @@ class MongoOutboxRepository:
         self, outbox_id: UUID, db_session: AsyncClientSession | None = None
     ) -> Outbox | None:
         doc = await self._col.find_one({"_id": str(outbox_id)}, session=db_session)
-        return document_to_outbox(doc) if doc else None
+        return doc and document_to_outbox(doc)
 
     async def list_pending(
         self, limit: int, db_session: AsyncClientSession | None = None

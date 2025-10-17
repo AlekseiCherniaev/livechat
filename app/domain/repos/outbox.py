@@ -10,7 +10,7 @@ class OutboxRepository(Protocol):
 
     async def get_by_id(
         self, outbox_id: UUID, db_session: Any | None = None
-    ) -> Outbox: ...
+    ) -> Outbox | None: ...
 
     async def list_pending(
         self, limit: int, db_session: Any | None = None
