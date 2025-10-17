@@ -45,14 +45,32 @@ class Settings(BaseSettings):
 
     redis_host: str = "localhost"
     redis_port: int = 6379
-    redis_db: int = 0
+    redis_db_app: int = 0
+    redis_db_celery_broker: int = 1
+    redis_db_celery_backend: int = 2
     user_session_ttl_seconds: int = 60 * 60
     web_socket_session_ttl_seconds: int = 30
 
     @computed_field  # type: ignore
     @property
-    def redis_dsn(self) -> str:
+    def redis_app_dsn(self) -> str:
         return f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db}"
+
+    celery_redis_lock_key: str = "outbox_repair_lock"
+    celery_redis_lock_key_timeout: int = 60 * 5
+    celery_schedule: float = 60.0
+
+    @computed_field  # type: ignore
+    @property
+    def redis_celery_broker_dsn(self) -> str:
+        return (
+            f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db_celery_broker}"
+        )
+
+    @computed_field  # type: ignore
+    @property
+    def redis_celery_backend_dsn(self) -> str:
+        return f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db_celery_backend}"
 
     cassandra_contact_point: str = "localhost"
     cassandra_port: int = 9042

@@ -34,7 +34,7 @@ class MongoOutboxRepository:
         return document_to_outbox(doc) if doc else None
 
     async def list_pending(
-        self, limit: int = 100, db_session: AsyncClientSession | None = None
+        self, limit: int, db_session: AsyncClientSession | None = None
     ) -> list[Outbox]:
         cursor = (
             self._col.find({"status": OutboxStatus.PENDING.value}, session=db_session)
