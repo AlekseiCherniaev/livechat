@@ -29,3 +29,15 @@ CREATE TABLE IF NOT EXISTS livechat.messages_by_id (
     edited boolean,
     updated_at timestamp
 );
+
+CREATE TABLE IF NOT EXISTS livechat.messages_global (
+    partition text,
+    created_at timestamp,
+    id UUID,
+    room_id UUID,
+    user_id UUID,
+    content text,
+    edited boolean,
+    updated_at timestamp,
+    PRIMARY KEY (partition, created_at, id)
+) WITH CLUSTERING ORDER BY (created_at DESC, id DESC);
