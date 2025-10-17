@@ -4,20 +4,15 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 
-class UserBase(BaseModel):
+class UserAuth(BaseModel):
     username: str = Field(max_length=32)
-
-
-class UserCreate(UserBase):
     password: str = Field(max_length=32)
 
 
-class UserLogin(UserBase):
-    password: str = Field(max_length=32)
-
-
-class UserPublic(UserBase):
-    id: UUID
+class UserPublic(BaseModel):
+    username: str
+    last_active_at: datetime | None
+    last_login_at: datetime | None
     created_at: datetime
     updated_at: datetime
-    last_active_at: datetime | None
+    id: UUID

@@ -3,8 +3,9 @@ from fastapi import APIRouter, Depends, Response, status, Request
 
 from app.api.dependencies import set_session_cookie, get_current_user
 from app.api.di import get_user_service
-from app.api.schemas.user import UserCreate, UserPublic, UserLogin
-from app.domain.services.user_service import UserService
+from app.api.schemas.user import UserAuth, UserPublic
+from app.domain.dtos.user import UserAuthDTO
+from app.domain.services.user import UserService
 
 logger = structlog.get_logger(__name__)
 
@@ -13,12 +14,11 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 @router.post("/register")
 async def register(
-    user_data: UserCreate, service: UserService = Depends(get_user_service)
+    user_data: UserAuth, user_service: UserService = Depends(get_user_service)
 ) -> Response:
     logger.bind(user_username=user_data.username).debug("Registering user...")
-    await service.register_user(
-        username=user_data.username, password=user_data.password
-    )
+    user_dto = UserAuthDTO(username=user_data.username, password=user_data.password)
+    await user_service.register_user(user_data=user_dto)
     logger.bind(user_username=user_data.username).debug("Registered user")
 
     return Response(status_code=status.HTTP_200_OK)
@@ -26,15 +26,14 @@ async def register(
 
 @router.post("/login")
 async def login(
-    user_data: UserLogin,
+    user_data: UserAuth,
     response: Response,
-    service: UserService = Depends(get_user_service),
+    user_service: UserService = Depends(get_user_service),
 ) -> Response:
     logger.bind(username=user_data.username).debug("Logging in user...")
-    session = await service.login_user(
-        username=user_data.username, password=user_data.password
-    )
-    set_session_cookie(response=response, session_id=str(session.id))
+    user_dto = UserAuthDTO(username=user_data.username, password=user_data.password)
+    session_id = await user_service.login_user(user_data=user_dto)
+    set_session_cookie(response=response, session_id=str(session_id))
     response.status_code = status.HTTP_200_OK
     logger.bind(username=user_data.username).debug("Logged in user")
 
@@ -45,11 +44,11 @@ async def login(
 async def logout(
     request: Request,
     response: Response,
-    service: UserService = Depends(get_user_service),
+    user_service: UserService = Depends(get_user_service),
 ) -> Response:
     session_cookie = request.cookies.get("session_id")
     logger.bind(session_cookie=session_cookie).debug("Logging out user...")
-    await service.logout_user(session_id=session_cookie)
+    await user_service.logout_user(session_id=session_cookie)
     response.delete_cookie("session_id")
     response.status_code = status.HTTP_200_OK
     logger.bind(session_cookie=session_cookie).debug("Logged out user")
