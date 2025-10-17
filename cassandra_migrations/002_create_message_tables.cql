@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS messages (
+CREATE TABLE IF NOT EXISTS livechat.messages (
     room_id UUID,
     created_at timestamp,
     id UUID,
@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS messages (
     PRIMARY KEY (room_id, created_at)
 ) WITH CLUSTERING ORDER BY (created_at DESC);
 
-CREATE TABLE IF NOT EXISTS messages_by_user (
+CREATE TABLE IF NOT EXISTS livechat.messages_by_user (
     user_id UUID,
     created_at timestamp,
     message_id UUID,
@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS messages_by_user (
     PRIMARY KEY (user_id, created_at)
 ) WITH CLUSTERING ORDER BY (created_at DESC);
 
-CREATE TABLE IF NOT EXISTS messages_by_id (
+CREATE TABLE IF NOT EXISTS livechat.messages_by_id (
     id UUID PRIMARY KEY,
     room_id UUID,
     user_id UUID,

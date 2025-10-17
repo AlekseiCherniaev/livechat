@@ -17,7 +17,11 @@ session = cluster.connect()
 for f in sorted(glob.glob("cassandra_migrations/*.cql")):
     print(f"Applying migration: {f}")
     with open(f) as file:
-        session.execute(file.read())
+        content = file.read()
+        statements = [stmt.strip() for stmt in content.split(";") if stmt.strip()]
+        for stmt in statements:
+            print(f"  -> Executing: {stmt.split()[0]} ...")
+            session.execute(stmt)
 
 print("All migrations applied")
 cluster.shutdown()
