@@ -18,11 +18,11 @@ async def ensure_tables(client: AsyncClient) -> None:
         event_type String,
         user_id UUID,
         room_id UUID,
-        timestamp DateTime64(3),
+        created_at DateTime64(3),
         payload String
     ) ENGINE = MergeTree()
-    PARTITION BY toYYYYMM(timestamp)
-    ORDER BY (room_id, timestamp)
+    PARTITION BY toYYYYMM(created_at)
+    ORDER BY (room_id, created_at)
     """)
 
 

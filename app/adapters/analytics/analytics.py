@@ -1,6 +1,8 @@
+from datetime import datetime, timedelta
 from uuid import UUID
 
 import orjson
+from cassandra.query import timezone
 from clickhouse_connect.driver.asyncclient import AsyncClient
 
 from app.domain.entities.analytics_event import AnalyticsEvent
@@ -22,9 +24,9 @@ class ClickHouseAnalyticsRepository:
                 [
                     str(event.id),
                     event.event_type.value,
-                    str(event.user_id),
-                    str(event.room_id),
-                    event.timestamp,
+                    str(event.user_id) if event.user_id else None,
+                    str(event.room_id) if event.room_id else None,
+                    event.created_at,
                     payload_serialized,
                 ]
             ],
@@ -33,7 +35,7 @@ class ClickHouseAnalyticsRepository:
                 "event_type",
                 "user_id",
                 "room_id",
-                "timestamp",
+                "created_at",
                 "payload",
             ],
         )
@@ -43,7 +45,7 @@ class ClickHouseAnalyticsRepository:
         SELECT
             COUNT(*) AS total_messages,
             COUNT(DISTINCT user_id) AS active_users,
-            MAX(toDateTime(timestamp)) AS last_updated
+            MAX(created_at) AS last_updated
         FROM analytics_events
         WHERE room_id = '{room_id}'
         """
@@ -62,12 +64,12 @@ class ClickHouseAnalyticsRepository:
 
     async def get_user_activity(self, user_id: UUID) -> dict[str, int] | None:
         query = f"""
-        SELECT
-            COUNT(*) AS messages,
-            COUNT(DISTINCT room_id) AS rooms_joined
-        FROM analytics_events
-        WHERE user_id = '{user_id}'
-        """
+                SELECT
+                    COUNT(*) AS messages,
+                    COUNT(DISTINCT room_id) AS rooms_joined
+                FROM analytics_events
+                WHERE user_id = '{user_id}'
+                """
 
         result = await self._client.query(query)
         if not result.result_rows:
@@ -76,24 +78,21 @@ class ClickHouseAnalyticsRepository:
         row = next(result.named_results())
         return {"messages": row["messages"], "rooms_joined": row["rooms_joined"]}
 
-    async def top_active_rooms(self, limit: int = 10) -> list[RoomStats]:
+    async def top_active_rooms(self, limit: int) -> list[RoomStats]:
         query = f"""
-        SELECT
-            room_id,
-            COUNT(*) AS total_messages,
-            COUNT(DISTINCT user_id) AS active_users,
-            MAX(toDateTime(timestamp)) AS last_updated
-        FROM analytics_events
-        GROUP BY room_id
-        ORDER BY total_messages DESC
-        LIMIT {limit}
-        """
+                SELECT
+                    room_id,
+                    COUNT(*) AS total_messages,
+                    COUNT(DISTINCT user_id) AS active_users,
+                    MAX(created_at) AS last_updated
+                FROM analytics_events
+                GROUP BY room_id
+                ORDER BY total_messages DESC
+                LIMIT {limit}
+                """
 
         result = await self._client.query(query)
         rows = list(result.named_results())
-        if not rows:
-            return []
-
         return [
             RoomStats(
                 room_id=row["room_id"],
@@ -103,3 +102,17 @@ class ClickHouseAnalyticsRepository:
             )
             for row in rows
         ]
+
+    async def messages_per_minute(self, room_id: UUID, since_minutes: int) -> int:
+        since_time = datetime.now(timezone.utc) - timedelta(minutes=since_minutes)
+        query = f"""
+        SELECT COUNT(*) AS cnt
+        FROM analytics_events
+        WHERE room_id = '{room_id}' AND created_at >= toDateTime('{since_time.isoformat()}')
+        """
+
+        result = await self._client.query(query)
+        if not result.result_rows:
+            return 0
+        row = next(result.named_results())
+        return row["cnt"]
