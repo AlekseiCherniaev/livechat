@@ -17,12 +17,14 @@ class MongoTransactionManager:
         **kwargs: Any,
     ) -> Any:
         async with self._client.start_session() as session:
-            async with session.start_transaction():
-                try:
-                    logger.debug("Mongo transaction started")
-                    result = await func(db_session=session, *args, **kwargs)
-                    logger.debug("Mongo transaction committed")
-                    return result
-                except Exception as e:
-                    logger.bind(e=str(e)).exception("Mongo transaction aborted")
-                    raise
+            await session.start_transaction()
+            try:
+                logger.debug("Mongo transaction started")
+                result = await func(db_session=session, *args, **kwargs)
+                await session.commit_transaction()
+                logger.debug("Mongo transaction committed")
+                return result
+            except Exception as e:
+                logger.bind(e=str(e)).exception("Mongo transaction aborted")
+                await session.abort_transaction()
+                raise
