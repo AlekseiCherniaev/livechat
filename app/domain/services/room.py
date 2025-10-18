@@ -246,6 +246,9 @@ class RoomService:
         if user is None:
             raise UserNotFound
 
+        if room.created_by == user.id:
+            raise RoomPermissionError
+
         if room.is_public:
 
             async def _txn(db_session: Any) -> None:
