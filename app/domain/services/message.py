@@ -41,7 +41,9 @@ class MessageService:
         self._connection_port = connection_port
         self._tm = transaction_manager
 
-    async def send_message(self, room_id: UUID, user_id: UUID, content: str) -> None:
+    async def send_message(
+        self, room_id: UUID, user_id: UUID, content: str
+    ) -> MessagePublicDTO:
         user = await self._user_repo.get_by_id(user_id=user_id)
         if user is None:
             raise UserNotFound
@@ -82,10 +84,11 @@ class MessageService:
             event_type=BroadcastEventType.MESSAGE_CREATED,
             event_payload=payload,
         )
+        return message_to_dto(message=message_create, username=user.username)
 
     async def edit_message(
         self, message_id: UUID, user_id: UUID, new_content: str
-    ) -> None:
+    ) -> MessagePublicDTO:
         user = await self._user_repo.get_by_id(user_id=user_id)
         if user is None:
             raise UserNotFound
@@ -127,6 +130,7 @@ class MessageService:
             event_type=BroadcastEventType.MESSAGE_EDITED,
             event_payload=payload,
         )
+        return message_to_dto(message=message_update, username=user.username)
 
     async def delete_message(self, message_id: UUID, user_id: UUID) -> None:
         user = await self._user_repo.get_by_id(user_id=user_id)

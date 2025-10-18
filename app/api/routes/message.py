@@ -1,3 +1,4 @@
+from dataclasses import asdict
 from uuid import UUID
 
 import structlog
@@ -23,15 +24,15 @@ async def send_message(
     message_data: SendMessageRequest,
     current_user_id: UUID = Depends(get_current_user_id),
     message_service: MessageService = Depends(get_message_service),
-) -> Response:
+) -> MessagePublic:
     logger.bind(room_id=room_id, user_id=current_user_id).debug("Sending message...")
-    await message_service.send_message(
+    message = await message_service.send_message(
         room_id=room_id,
         user_id=current_user_id,
         content=message_data.content,
     )
     logger.bind(room_id=room_id, user_id=current_user_id).debug("Message sent")
-    return Response(status_code=status.HTTP_200_OK)
+    return MessagePublic.model_validate(asdict(message))
 
 
 @router.put("/update-message/{message_id}")
@@ -40,17 +41,17 @@ async def edit_message(
     message_data: EditMessageRequest,
     current_user_id: UUID = Depends(get_current_user_id),
     message_service: MessageService = Depends(get_message_service),
-) -> Response:
+) -> MessagePublic:
     logger.bind(message_id=message_id, user_id=current_user_id).debug(
         "Editing message..."
     )
-    await message_service.edit_message(
+    message = await message_service.edit_message(
         message_id=message_id,
         user_id=current_user_id,
         new_content=message_data.new_content,
     )
     logger.bind(message_id=message_id, user_id=current_user_id).debug("Message edited")
-    return Response(status_code=status.HTTP_200_OK)
+    return MessagePublic.model_validate(asdict(message))
 
 
 @router.delete("/delete-message/{message_id}")
@@ -83,4 +84,4 @@ async def get_recent_messages(
     logger.bind(room_id=room_id, count=len(messages), user_id=current_user_id).debug(
         "Fetched recent messages"
     )
-    return [MessagePublic.model_validate(message) for message in messages]
+    return [MessagePublic.model_validate(asdict(message)) for message in messages]
