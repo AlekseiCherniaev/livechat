@@ -84,7 +84,7 @@ def get_notification_sender(
 
 
 def get_password_hasher(request: Request) -> PasswordHasherPort:
-    return request.app.state.bcrypt_password_hasher
+    return request.app.state.bcrypt_password_hasher  # type: ignore
 
 
 def get_transaction_manager(

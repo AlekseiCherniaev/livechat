@@ -1,4 +1,5 @@
 from dataclasses import asdict
+from uuid import UUID
 
 import structlog
 from fastapi import Response, Request, Depends
@@ -35,3 +36,14 @@ async def get_current_user(
     logger.bind(session_cookie=session_cookie).debug("Got current user")
 
     return UserPublic.model_validate(asdict(user))
+
+
+async def get_current_user_id(
+    request: Request, user_service: UserService = Depends(get_user_service)
+) -> UUID:
+    session_cookie = request.cookies.get("session_id")
+    logger.bind(session_cookie=session_cookie).debug("Getting current user id...")
+    user_id = await user_service.get_user_id_by_session(session_id=session_cookie)
+    logger.bind(session_cookie=session_cookie).debug("Got current user id")
+
+    return user_id

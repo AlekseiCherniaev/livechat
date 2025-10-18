@@ -46,7 +46,7 @@ class UserService:
         if await self._user_repo.exists(username=user_data.username):
             raise UserAlreadyExists
 
-        async def _txn(db_session: Any):
+        async def _txn(db_session: Any) -> None:
             hashed_password = self._password_hasher.hash(password=user_data.password)
             user = User(username=user_data.username, hashed_password=hashed_password)
             user = await self._user_repo.save(user=user, db_session=db_session)
@@ -70,7 +70,7 @@ class UserService:
         ):
             raise UserInvalidCredentials
 
-        async def _txn(db_session: Any):
+        async def _txn(db_session: Any) -> UUID:
             user.last_login_at = datetime.now(timezone.utc)
             user.last_active = datetime.now(timezone.utc)
             await self._user_repo.save(user=user, db_session=db_session)
@@ -97,7 +97,7 @@ class UserService:
 
             return session.id
 
-        session_id = await self._tm.run_in_transaction(_txn)
+        session_id: UUID = await self._tm.run_in_transaction(_txn)
 
         return session_id
 
@@ -114,7 +114,7 @@ class UserService:
         if not session:
             raise SessionNotFound
 
-        async def _txn(db_session: Any):
+        async def _txn(db_session: Any) -> None:
             await self._user_repo.update_last_active(
                 user_id=session.user_id, db_session=db_session
             )
@@ -156,3 +156,18 @@ class UserService:
 
         logger.bind(user_id=user.id).debug("Retrieved user from repo")
         return user_to_dto(user=user)
+
+    async def get_user_id_by_session(self, session_id: str | None) -> UUID:
+        if not session_id:
+            raise SessionNotFound
+
+        try:
+            session_uuid = UUID(session_id)
+        except ValueError:
+            raise InvalidSession
+
+        session = await self._session_repo.get_by_id(session_id=session_uuid)
+        if not session:
+            raise SessionNotFound
+
+        return session.user_id
