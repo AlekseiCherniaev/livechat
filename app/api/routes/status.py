@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Response, status
 from fastapi.openapi.docs import get_swagger_ui_html
 from starlette.responses import HTMLResponse
 
@@ -16,6 +16,6 @@ async def custom_swagger_ui_html() -> HTMLResponse:
     )
 
 
-@router.get("/health", tags=["Health"])
-async def health_check() -> dict[str, str]:
-    return {"status": "ok"}
+@router.get("/health")
+async def health_check() -> Response:
+    return Response(status_code=status.HTTP_200_OK)
