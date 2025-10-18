@@ -51,7 +51,7 @@ class Settings(BaseSettings):
     redis_db_celery_broker: int = 1
     redis_db_celery_backend: int = 2
     user_session_ttl_seconds: int = 60 * 60
-    web_socket_session_ttl_seconds: int = 30
+    web_socket_session_ttl_seconds: int = 1800
 
     @computed_field  # type: ignore
     @property

@@ -79,29 +79,11 @@ class RedisWebSocketSessionRepository:
             await self._redis.delete(*(self._session_key(UUID(s)) for s in session_ids))
         await self._redis.delete(self._user_sessions_key(user_id))
 
-    async def count_by_room(self, room_id: UUID, db_session: Any | None = None) -> int:
-        pattern = "ws_session:*"
-        count = 0
-        async for key in self._redis.scan_iter(match=pattern):
-            raw = await self._redis.get(key)
-            if not raw:
-                continue
-            session = dict_to_session(orjson.loads(raw))
-            if session.room_id == room_id:
-                count += 1
-        return count
-
     async def update_last_ping(
         self, session_id: UUID, db_session: Any | None = None
     ) -> None:
-        raw = await self._redis.get(self._session_key(session_id))
-        if not raw:
+        session = await self.get_by_id(session_id)
+        if not session:
             return
-
-        data = orjson.loads(raw)
-        data["last_ping_at"] = datetime.now(timezone.utc).isoformat()
-        await self._redis.set(
-            name=self._session_key(session_id),
-            value=orjson.dumps(data),
-            ex=self._ttl,
-        )
+        session.last_ping_at = datetime.now(timezone.utc)
+        await self.save(session=session)
