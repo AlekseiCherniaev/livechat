@@ -7,6 +7,7 @@ from pytest_asyncio import fixture
 
 from app.core.constants import BroadcastEventType
 from app.domain.entities.message import Message
+from app.domain.entities.user import User
 from app.domain.exceptions.message import (
     MessageNotFound,
     MessagePermissionError,
@@ -17,10 +18,13 @@ from app.domain.services.message import MessageService
 
 class TestMessageService:
     @fixture
-    def service(self, message_repo, user_repo, connection_port, outbox_repo, tm):
+    def service(
+        self, message_repo, user_repo, membership_repo, connection_port, outbox_repo, tm
+    ):
         return MessageService(
             message_repo=message_repo,
             user_repo=user_repo,
+            membership_repo=membership_repo,
             connection_port=connection_port,
             outbox_repo=outbox_repo,
             transaction_manager=tm,
@@ -152,19 +156,29 @@ class TestMessageService:
         with pytest.raises(MessagePermissionError):
             await service.delete_message(uuid4(), user_id)
 
-    async def test_get_recent_messages(self, service, message_repo):
+    async def test_get_recent_messages(self, service, message_repo, membership_repo):
         room_id = uuid4()
+        user_id = uuid4()
+        membership_repo.list_users.return_value = [
+            User(
+                id=user_id,
+                username="test",
+                hashed_password="test",
+            )
+        ]
         message_repo.get_recent_by_room.return_value = [
             Message(
                 id=uuid4(),
                 room_id=room_id,
-                user_id=uuid4(),
+                user_id=user_id,
                 content="hello",
                 created_at=datetime.now(timezone.utc),
             )
         ]
 
-        result = await service.get_recent_messages(room_id=room_id, limit=5)
+        result = await service.get_recent_messages(
+            room_id=room_id, user_id=user_id, limit=5
+        )
 
         message_repo.get_recent_by_room.assert_awaited_once_with(
             room_id=room_id, limit=5

@@ -17,6 +17,7 @@ from app.domain.ports.connection import ConnectionPort
 from app.domain.ports.transaction_manager import TransactionManager
 from app.domain.repos.message import MessageRepository
 from app.domain.repos.outbox import OutboxRepository
+from app.domain.repos.room_membership import RoomMembershipRepository
 from app.domain.repos.user import UserRepository
 from app.domain.services.utils import create_outbox_analytics_event
 
@@ -28,12 +29,14 @@ class MessageService:
         self,
         message_repo: MessageRepository,
         user_repo: UserRepository,
+        membership_repo: RoomMembershipRepository,
         outbox_repo: OutboxRepository,
         connection_port: ConnectionPort,
         transaction_manager: TransactionManager,
     ):
         self._message_repo = message_repo
         self._user_repo = user_repo
+        self._membership_repo = membership_repo
         self._outbox_repo = outbox_repo
         self._connection_port = connection_port
         self._tm = transaction_manager
@@ -166,8 +169,12 @@ class MessageService:
         )
 
     async def get_recent_messages(
-        self, room_id: UUID, limit: int
+        self, room_id: UUID, user_id: UUID, limit: int
     ) -> list[MessagePublicDTO]:
+        room_users = await self._membership_repo.list_users(room_id=room_id)
+        if user_id not in (user.id for user in room_users):
+            raise MessagePermissionError
+
         messages = await self._message_repo.get_recent_by_room(
             room_id=room_id, limit=limit
         )

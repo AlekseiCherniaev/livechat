@@ -7,5 +7,5 @@ class MessageNotFound(DomainException):
 
 
 class MessagePermissionError(DomainException):
-    def __init__(self, message: str = "Cannot edit another user's message") -> None:
+    def __init__(self, message: str = "Cannot access another user's message") -> None:
         super().__init__(message)
