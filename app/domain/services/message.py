@@ -48,6 +48,12 @@ class MessageService:
         if user is None:
             raise UserNotFound
 
+        membership = await self._membership_repo.exists(
+            room_id=room_id, user_id=user_id
+        )
+        if not membership:
+            raise MessagePermissionError
+
         async def _txn(db_session: Any) -> Message:
             message = Message(
                 room_id=room_id,
@@ -97,6 +103,12 @@ class MessageService:
         if not message:
             raise MessageNotFound
 
+        membership = await self._membership_repo.exists(
+            room_id=message.room_id, user_id=user_id
+        )
+        if not membership:
+            raise MessagePermissionError
+
         if message.user_id != user_id:
             raise MessagePermissionError
 
@@ -140,6 +152,12 @@ class MessageService:
         message = await self._message_repo.get_by_id(message_id=message_id)
         if not message:
             raise MessageNotFound
+
+        membership = await self._membership_repo.exists(
+            room_id=message.room_id, user_id=user_id
+        )
+        if not membership:
+            raise MessagePermissionError
 
         if message.user_id != user_id:
             raise MessagePermissionError
