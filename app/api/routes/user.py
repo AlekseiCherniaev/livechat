@@ -19,8 +19,7 @@ async def register(
     logger.bind(user_username=user_data.username).debug("Registering user...")
     user_dto = UserAuthDTO(username=user_data.username, password=user_data.password)
     await user_service.register_user(user_data=user_dto)
-    logger.bind(user_username=user_data.username).debug("Registered user")
-
+    logger.bind(user_username=user_data.username).debug("User registered")
     return Response(status_code=status.HTTP_200_OK)
 
 
@@ -35,8 +34,7 @@ async def login(
     session_id = await user_service.login_user(user_data=user_dto)
     set_session_cookie(response=response, session_id=str(session_id))
     response.status_code = status.HTTP_200_OK
-    logger.bind(username=user_data.username).debug("Logged in user")
-
+    logger.bind(username=user_data.username).debug("User logged in")
     return response
 
 
@@ -52,7 +50,6 @@ async def logout(
     response.delete_cookie("session_id")
     response.status_code = status.HTTP_200_OK
     logger.bind(session_cookie=session_cookie).debug("Logged out user")
-
     return response
 
 

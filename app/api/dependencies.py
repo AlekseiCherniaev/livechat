@@ -34,7 +34,6 @@ async def get_current_user(
     logger.bind(session_cookie=session_cookie).debug("Getting current user...")
     user = await user_service.get_user_by_session(session_id=session_cookie)
     logger.bind(session_cookie=session_cookie).debug("Got current user")
-
     return UserPublic.model_validate(asdict(user))
 
 
@@ -45,5 +44,4 @@ async def get_current_user_id(
     logger.bind(session_cookie=session_cookie).debug("Getting current user id...")
     user_id = await user_service.get_user_id_by_session(session_id=session_cookie)
     logger.bind(session_cookie=session_cookie).debug("Got current user id")
-
     return user_id
