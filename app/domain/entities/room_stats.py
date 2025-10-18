@@ -7,5 +7,5 @@ from uuid import UUID
 class RoomStats:
     room_id: UUID
     total_messages: int
-    active_users: int
+    users_amount: int
     last_updated: datetime

@@ -131,7 +131,7 @@ async def get_active_users_in_room(
     current_user_id: UUID = Depends(get_current_user_id),
     ws_service: WebSocketService = Depends(get_websocket_service),
 ) -> list[UUID]:
-    return await ws_service.count_active_users_in_room(
+    return await ws_service.active_users_in_room(
         room_id=room_id, user_id=current_user_id
     )
 

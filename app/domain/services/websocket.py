@@ -139,9 +139,7 @@ class WebSocketService:
 
         await self._tm.run_in_transaction(_txn)
 
-    async def count_active_users_in_room(
-        self, room_id: UUID, user_id: UUID
-    ) -> list[UUID]:
+    async def active_users_in_room(self, room_id: UUID, user_id: UUID) -> list[UUID]:
         membership = await self._membership_repo.exists(
             room_id=room_id, user_id=user_id
         )
