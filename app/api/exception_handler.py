@@ -10,11 +10,15 @@ from app.domain.exceptions.message import (
     MessageNotFound,
     MessagePermissionError,
 )
-from app.domain.exceptions.notification import NotificationNotFound
+from app.domain.exceptions.notification import (
+    NotificationNotFound,
+    NotificationPermissionError,
+)
 from app.domain.exceptions.room import (
     RoomNotFound,
     RoomAlreadyExists,
     NoChangesDetected,
+    RoomPermissionError,
 )
 from app.domain.exceptions.user import (
     UserAlreadyExists,
@@ -39,9 +43,11 @@ EXCEPTION_STATUS_MAP: dict[type[Exception], int] = {
     RoomNotFound: status.HTTP_404_NOT_FOUND,
     RoomAlreadyExists: status.HTTP_400_BAD_REQUEST,
     NoChangesDetected: status.HTTP_400_BAD_REQUEST,
+    RoomPermissionError: status.HTTP_400_BAD_REQUEST,
     JoinRequestNotFound: status.HTTP_404_NOT_FOUND,
     JoinRequestAlreadyExists: status.HTTP_400_BAD_REQUEST,
     NotificationNotFound: status.HTTP_404_NOT_FOUND,
+    NotificationPermissionError: status.HTTP_403_FORBIDDEN,
     MessageNotFound: status.HTTP_404_NOT_FOUND,
     MessagePermissionError: status.HTTP_403_FORBIDDEN,
 }

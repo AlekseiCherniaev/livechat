@@ -5,7 +5,10 @@ import structlog
 
 from app.core.constants import AnalyticsEventType
 from app.domain.dtos.notification import NotificationPublicDTO, notification_to_dto
-from app.domain.exceptions.notification import NotificationNotFound
+from app.domain.exceptions.notification import (
+    NotificationNotFound,
+    NotificationPermissionError,
+)
 from app.domain.ports.transaction_manager import TransactionManager
 from app.domain.repos.notification import NotificationRepository
 from app.domain.repos.outbox import OutboxRepository
@@ -36,10 +39,13 @@ class NotificationService:
         )
         return [notification_to_dto(notification) for notification in notifications]
 
-    async def mark_as_read(self, notification_id: UUID) -> None:
+    async def mark_as_read(self, notification_id: UUID, user_id: UUID) -> None:
         notification = await self._notif_repo.get_by_id(notification_id=notification_id)
         if notification is None:
             raise NotificationNotFound
+
+        if notification.user_id != user_id:
+            raise NotificationPermissionError
 
         async def _txn(db_session: Any) -> None:
             await self._notif_repo.mark_as_read(
@@ -84,3 +90,11 @@ class NotificationService:
             "Fetched unread notification count"
         )
         return count
+
+    async def delete_notification(self, notification_id: UUID, user_id: UUID) -> None:
+        await self._notif_repo.delete_by_id(
+            notification_id=notification_id, user_id=user_id
+        )
+        logger.bind(user_id=user_id, notification_id=notification_id).debug(
+            "Notification deleted"
+        )
