@@ -20,7 +20,7 @@ from app.domain.services.websocket import WebSocketService
 
 logger = structlog.get_logger(__name__)
 
-router = APIRouter(prefix="/ws", tags=["WebSocket"])
+router = APIRouter(prefix="/ws", tags=["websocket"])
 
 
 @router.websocket("/stream")

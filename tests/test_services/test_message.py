@@ -185,21 +185,3 @@ class TestMessageService:
         )
         assert len(result) == 1
         assert result[0].content == "hello"
-
-    async def test_get_user_messages(self, service, message_repo):
-        user_id = uuid4()
-        message_repo.list_by_user.return_value = [
-            Message(
-                id=uuid4(),
-                room_id=uuid4(),
-                user_id=user_id,
-                content="yo",
-                created_at=datetime.now(timezone.utc),
-            )
-        ]
-
-        result = await service.get_user_messages(user_id=user_id, limit=3)
-
-        message_repo.list_by_user.assert_awaited_once_with(user_id=user_id, limit=3)
-        assert len(result) == 1
-        assert result[0].content == "yo"

@@ -27,7 +27,3 @@ class MessageRepository(Protocol):
     async def delete_by_id(
         self, message_id: UUID, db_session: Any | None = None
     ) -> None: ...
-
-    async def list_by_user(
-        self, user_id: UUID, limit: int, db_session: Any | None = None
-    ) -> list[Message]: ...

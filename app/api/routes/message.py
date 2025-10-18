@@ -84,19 +84,3 @@ async def get_recent_messages(
         "Fetched recent messages"
     )
     return [MessagePublic.model_validate(message) for message in messages]
-
-
-@router.get("/user/{user_id}")
-async def get_user_messages(
-    limit: int = Query(default=50, ge=1, le=200),
-    current_user_id: UUID = Depends(get_current_user_id),
-    message_service: MessageService = Depends(get_message_service),
-) -> list[MessagePublic]:
-    logger.bind(user_id=current_user_id, limit=limit).debug("Fetching user messages...")
-    messages = await message_service.get_user_messages(
-        user_id=current_user_id, limit=limit
-    )
-    logger.bind(user_id=current_user_id, count=len(messages)).debug(
-        "Fetched user messages"
-    )
-    return [MessagePublic.model_validate(message) for message in messages]

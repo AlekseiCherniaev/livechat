@@ -96,14 +96,3 @@ class CassandraMessageRepository:
             msg_by_id.delete()
 
         await asyncio.to_thread(_delete)
-
-    async def list_by_user(
-        self, user_id: UUID, limit: int, db_session: Any | None = None
-    ) -> list[Message]:
-        def _list() -> list[Message]:
-            return [
-                msg.to_entity()
-                for msg in MessageByUserModel.objects(user_id=user_id).limit(limit)
-            ]
-
-        return await asyncio.to_thread(_list)

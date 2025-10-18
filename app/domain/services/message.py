@@ -190,13 +190,3 @@ class MessageService:
             message_to_dto(message=msg, username=users_map.get(msg.user_id, "Unknown"))
             for msg in messages
         ]
-
-    async def get_user_messages(
-        self, user_id: UUID, limit: int
-    ) -> list[MessagePublicDTO]:
-        messages = await self._message_repo.list_by_user(user_id=user_id, limit=limit)
-        user = await self._user_repo.get_by_id(user_id=user_id)
-        return [
-            message_to_dto(message, username=user.username if user else "Unknown")
-            for message in messages
-        ]
