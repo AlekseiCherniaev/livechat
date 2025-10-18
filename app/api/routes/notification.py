@@ -4,7 +4,7 @@ from uuid import UUID
 import structlog
 from fastapi import APIRouter, Depends, Response, status, Query
 
-from app.api.dependencies import get_current_user, get_current_user_id
+from app.api.dependencies import get_current_user_id
 from app.api.di import get_notification_service
 from app.api.schemas.notification import (
     NotificationListResponse,
@@ -46,6 +46,7 @@ async def list_notifications(
 async def mark_as_read(
     notification_id: UUID,
     notification_service: NotificationService = Depends(get_notification_service),
+    _: UUID = Depends(get_current_user_id),
 ) -> Response:
     logger.bind(notification_id=notification_id).debug(
         "Marking notification as read..."
@@ -57,7 +58,7 @@ async def mark_as_read(
 
 @router.post("/read-all")
 async def mark_all_as_read(
-    user_id: UUID = Depends(get_current_user),
+    user_id: UUID = Depends(get_current_user_id),
     notification_service: NotificationService = Depends(get_notification_service),
 ) -> Response:
     logger.bind(user_id=user_id).debug("Marking all notifications as read...")
@@ -68,7 +69,7 @@ async def mark_all_as_read(
 
 @router.get("/count")
 async def count_unread(
-    user_id: UUID = Depends(get_current_user),
+    user_id: UUID = Depends(get_current_user_id),
     notification_service: NotificationService = Depends(get_notification_service),
 ) -> NotificationCountResponse:
     logger.bind(user_id=user_id).debug("Counting unread notifications...")
