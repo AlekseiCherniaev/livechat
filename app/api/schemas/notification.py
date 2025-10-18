@@ -11,9 +11,5 @@ class NotificationPublic(BaseModel):
     id: UUID
 
 
-class NotificationListResponse(BaseModel):
-    notifications: list[NotificationPublic]
-
-
 class NotificationCountResponse(BaseModel):
     unread_count: int

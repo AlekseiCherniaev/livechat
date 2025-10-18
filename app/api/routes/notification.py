@@ -7,7 +7,6 @@ from fastapi import APIRouter, Depends, Response, status, Query
 from app.api.dependencies import get_current_user_id
 from app.api.di import get_notification_service
 from app.api.schemas.notification import (
-    NotificationListResponse,
     NotificationCountResponse,
     NotificationPublic,
 )
@@ -22,59 +21,79 @@ router = APIRouter(prefix="/notifications", tags=["notifications"])
 async def list_notifications(
     unread_only: bool = Query(False),
     limit: int = Query(50, ge=1, le=200),
-    user_id: UUID = Depends(get_current_user_id),
+    current_user_id: UUID = Depends(get_current_user_id),
     notification_service: NotificationService = Depends(get_notification_service),
-) -> NotificationListResponse:
-    logger.bind(user_id=user_id, unread_only=unread_only, limit=limit).debug(
+) -> list[NotificationPublic]:
+    logger.bind(user_id=current_user_id, unread_only=unread_only, limit=limit).debug(
         "Fetching user notifications..."
     )
     notifications = await notification_service.list_user_notifications(
-        user_id=user_id, unread_only=unread_only, limit=limit
+        user_id=current_user_id, unread_only=unread_only, limit=limit
     )
-    logger.bind(user_id=user_id, amount=len(notifications)).debug(
+    logger.bind(user_id=current_user_id, amount=len(notifications)).debug(
         "Fetched user notifications"
     )
-    return NotificationListResponse(
-        notifications=[
-            NotificationPublic.model_validate(asdict(notification))
-            for notification in notifications
-        ]
-    )
+    return [
+        NotificationPublic.model_validate(asdict(notification))
+        for notification in notifications
+    ]
 
 
 @router.post("/{notification_id}/read")
 async def mark_as_read(
     notification_id: UUID,
+    current_user_id: UUID = Depends(get_current_user_id),
     notification_service: NotificationService = Depends(get_notification_service),
-    _: UUID = Depends(get_current_user_id),
 ) -> Response:
-    logger.bind(notification_id=notification_id).debug(
+    logger.bind(notification_id=notification_id, user_id=current_user_id).debug(
         "Marking notification as read..."
     )
-    await notification_service.mark_as_read(notification_id=notification_id)
-    logger.bind(notification_id=notification_id).info("Notification marked as read")
+    await notification_service.mark_as_read(
+        notification_id=notification_id, user_id=current_user_id
+    )
+    logger.bind(notification_id=notification_id, user_id=current_user_id).info(
+        "Notification marked as read"
+    )
     return Response(status_code=status.HTTP_200_OK)
 
 
 @router.post("/read-all")
 async def mark_all_as_read(
-    user_id: UUID = Depends(get_current_user_id),
+    current_user_id: UUID = Depends(get_current_user_id),
     notification_service: NotificationService = Depends(get_notification_service),
 ) -> Response:
-    logger.bind(user_id=user_id).debug("Marking all notifications as read...")
-    await notification_service.mark_all_as_read(user_id=user_id)
-    logger.bind(user_id=user_id).info("All notifications marked as read")
+    logger.bind(user_id=current_user_id).debug("Marking all notifications as read...")
+    await notification_service.mark_all_as_read(user_id=current_user_id)
+    logger.bind(user_id=current_user_id).info("All notifications marked as read")
     return Response(status_code=status.HTTP_200_OK)
 
 
 @router.get("/count")
 async def count_unread(
-    user_id: UUID = Depends(get_current_user_id),
+    current_user_id: UUID = Depends(get_current_user_id),
     notification_service: NotificationService = Depends(get_notification_service),
 ) -> NotificationCountResponse:
-    logger.bind(user_id=user_id).debug("Counting unread notifications...")
-    unread_count = await notification_service.count_unread(user_id=user_id)
-    logger.bind(user_id=user_id, unread_count=unread_count).debug(
+    logger.bind(user_id=current_user_id).debug("Counting unread notifications...")
+    unread_count = await notification_service.count_unread(user_id=current_user_id)
+    logger.bind(user_id=current_user_id, unread_count=unread_count).debug(
         "Fetched unread notification count"
     )
     return NotificationCountResponse(unread_count=unread_count)
+
+
+@router.delete("/{notification_id}")
+async def delete_notification(
+    notification_id: UUID,
+    current_user_id: UUID = Depends(get_current_user_id),
+    notification_service: NotificationService = Depends(get_notification_service),
+) -> Response:
+    logger.bind(notification_id=notification_id, user_id=current_user_id).debug(
+        "Deleting notification..."
+    )
+    await notification_service.delete_notification(
+        notification_id=notification_id, user_id=current_user_id
+    )
+    logger.bind(notification_id=notification_id, user_id=current_user_id).debug(
+        "Notification deleted"
+    )
+    return Response(status_code=status.HTTP_200_OK)

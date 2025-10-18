@@ -54,5 +54,5 @@ async def logout(
 
 
 @router.get("/me")
-async def me(user: UserPublic = Depends(get_current_user)) -> UserPublic:
-    return user
+async def me(current_user: UserPublic = Depends(get_current_user)) -> UserPublic:
+    return current_user
