@@ -1,4 +1,4 @@
-from typing import Protocol, Any
+from typing import Protocol, Any, Collection
 from uuid import UUID
 
 from app.domain.entities.user import User
@@ -14,6 +14,10 @@ class UserRepository(Protocol):
     async def get_by_username(
         self, username: str, db_session: Any | None = None
     ) -> User | None: ...
+
+    async def get_by_ids(
+        self, user_ids: Collection[UUID], db_session: Any | None = None
+    ) -> list[User]: ...
 
     async def update_last_active(
         self, user_id: UUID, db_session: Any | None = None

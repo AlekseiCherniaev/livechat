@@ -171,10 +171,23 @@ class MessageService:
         messages = await self._message_repo.get_recent_by_room(
             room_id=room_id, limit=limit
         )
-        return [message_to_dto(message) for message in messages]
+        if not messages:
+            return []
+
+        user_ids = {msg.user_id for msg in messages}
+        users = await self._user_repo.get_by_ids(user_ids=user_ids)
+        users_map = {user.id: user.username for user in users}
+        return [
+            message_to_dto(message=msg, username=users_map.get(msg.user_id, "Unknown"))
+            for msg in messages
+        ]
 
     async def get_user_messages(
         self, user_id: UUID, limit: int
     ) -> list[MessagePublicDTO]:
         messages = await self._message_repo.list_by_user(user_id=user_id, limit=limit)
-        return [message_to_dto(message) for message in messages]
+        user = await self._user_repo.get_by_id(user_id=user_id)
+        return [
+            message_to_dto(message, username=user.username if user else "Unknown")
+            for message in messages
+        ]
