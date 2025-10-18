@@ -28,6 +28,7 @@ from app.domain.entities.room_membership import RoomMembership
 from app.domain.exceptions.join_request import (
     JoinRequestNotFound,
     JoinRequestAlreadyExists,
+    JoinRequestAlreadyHandled,
 )
 from app.domain.exceptions.room import (
     RoomAlreadyExists,
@@ -324,6 +325,9 @@ class RoomService:
         request = await self._join_repo.get_by_id(request_id=request_id)
         if not request:
             raise JoinRequestNotFound
+
+        if request.status != JoinRequestStatus.PENDING:
+            raise JoinRequestAlreadyHandled
 
         room = await self._room_repo.get_by_id(room_id=request.room_id)
         if room is None:

@@ -9,3 +9,8 @@ class JoinRequestNotFound(DomainException):
 class JoinRequestAlreadyExists(DomainException):
     def __init__(self, message: str = "Join request already exists") -> None:
         super().__init__(message)
+
+
+class JoinRequestAlreadyHandled(DomainException):
+    def __init__(self, message: str = "Join request already handled") -> None:
+        super().__init__(message)

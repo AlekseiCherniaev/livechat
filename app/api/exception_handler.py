@@ -6,6 +6,7 @@ from app.domain.exceptions.analytics import RoomStatsNotFound, UserActivityNotFo
 from app.domain.exceptions.join_request import (
     JoinRequestNotFound,
     JoinRequestAlreadyExists,
+    JoinRequestAlreadyHandled,
 )
 from app.domain.exceptions.message import (
     MessageNotFound,
@@ -51,6 +52,7 @@ EXCEPTION_STATUS_MAP: dict[type[Exception], int] = {
     RoomPermissionError: status.HTTP_400_BAD_REQUEST,
     JoinRequestNotFound: status.HTTP_404_NOT_FOUND,
     JoinRequestAlreadyExists: status.HTTP_400_BAD_REQUEST,
+    JoinRequestAlreadyHandled: status.HTTP_400_BAD_REQUEST,
     NotificationNotFound: status.HTTP_404_NOT_FOUND,
     NotificationPermissionError: status.HTTP_403_FORBIDDEN,
     MessageNotFound: status.HTTP_404_NOT_FOUND,
