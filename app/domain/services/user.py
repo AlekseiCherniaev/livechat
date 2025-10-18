@@ -171,3 +171,18 @@ class UserService:
             raise SessionNotFound
 
         return session.user_id
+
+    async def get_valid_session_id(self, session_id: str | None) -> UUID:
+        if not session_id:
+            raise SessionNotFound
+
+        try:
+            session_uuid = UUID(session_id)
+        except ValueError:
+            raise InvalidSession
+
+        session = await self._session_repo.get_by_id(session_id=session_uuid)
+        if not session:
+            raise SessionNotFound
+
+        return session.id
