@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Collection
 from uuid import UUID
 
 from pymongo.asynchronous.client_session import AsyncClientSession
@@ -33,6 +33,15 @@ class MongoUserRepository:
     ) -> User | None:
         doc = await self._col.find_one({"username": username}, session=db_session)
         return doc and document_to_user(doc=doc)
+
+    async def get_by_ids(
+        self, user_ids: Collection[UUID], db_session: Any | None = None
+    ) -> list[User]:
+        if not user_ids:
+            return []
+        ids = [str(uid) for uid in user_ids]
+        cursor = self._col.find({"_id": {"$in": ids}}, session=db_session)
+        return [document_to_user(doc) async for doc in cursor]
 
     async def update_last_active(
         self, user_id: UUID, db_session: AsyncClientSession | None = None
