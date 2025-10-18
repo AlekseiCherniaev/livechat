@@ -7,10 +7,17 @@ import structlog
 from app.core.constants import AnalyticsEventType, BroadcastEventType
 from app.domain.entities.event_payload import EventPayload
 from app.domain.entities.websocket_session import WebSocketSession
-from app.domain.exceptions.websocket_session import WebSocketSessionNotFound
+from app.domain.exceptions.room import RoomNotFound
+from app.domain.exceptions.user import UserNotFound
+from app.domain.exceptions.websocket_session import (
+    WebSocketSessionNotFound,
+    WebSocketSessionPermissionError,
+)
 from app.domain.ports.connection import ConnectionPort
 from app.domain.ports.transaction_manager import TransactionManager
 from app.domain.repos.outbox import OutboxRepository
+from app.domain.repos.room import RoomRepository
+from app.domain.repos.room_membership import RoomMembershipRepository
 from app.domain.repos.user import UserRepository
 from app.domain.repos.websocket_session import WebSocketSessionRepository
 from app.domain.services.utils import create_outbox_analytics_event
@@ -23,12 +30,16 @@ class WebSocketService:
         self,
         ws_session_repo: WebSocketSessionRepository,
         user_repo: UserRepository,
+        room_repo: RoomRepository,
+        membership_repo: RoomMembershipRepository,
         outbox_repo: OutboxRepository,
         connection_port: ConnectionPort,
         transaction_manager: TransactionManager,
     ):
         self._ws_session_repo = ws_session_repo
         self._user_repo = user_repo
+        self._room_repo = room_repo
+        self._membership_repo = membership_repo
         self._outbox_repo = outbox_repo
         self._conn = connection_port
         self._tm = transaction_manager
@@ -52,13 +63,18 @@ class WebSocketService:
             logger.bind(session_id=session.id).info("WebSocket connected")
 
         await self._tm.run_in_transaction(_txn)
-        await self._conn.connect(session=session)
+        await self._conn.connect_user_to_room(
+            user_id=session.user_id, room_id=session.room_id
+        )
 
-    async def disconnect(self, session_id: UUID) -> None:
+    async def disconnect(self, session_id: UUID, user_id: UUID) -> None:
         session = await self._ws_session_repo.get_by_id(session_id=session_id)
         if not session:
             logger.debug("Disconnect called for unknown session", session_id=session_id)
             return
+
+        if session.user_id != user_id:
+            raise WebSocketSessionPermissionError
 
         async def _txn(db_session: Any) -> None:
             await self._user_repo.update_last_active(
@@ -77,14 +93,23 @@ class WebSocketService:
                 db_session=db_session,
             )
 
-            logger.bind(session_id=session.session_id).info("WebSocket disconnected")
+            logger.bind(session_id=session.id).info("WebSocket disconnected")
 
         await self._tm.run_in_transaction(_txn)
-        await self._conn.disconnect(session_id=session_id)
+        await self._conn.disconnect_user_from_room(
+            user_id=session.user_id, room_id=session.room_id
+        )
 
     async def typing_indicator(
         self, room_id: UUID, user_id: UUID, username: str, is_typing: bool
     ) -> None:
+        user = await self._user_repo.get_by_id(user_id=user_id)
+        if not user:
+            raise UserNotFound
+
+        if user.username != username:
+            raise WebSocketSessionPermissionError
+
         payload = EventPayload(
             username=username,
             is_typing=is_typing,
@@ -96,10 +121,13 @@ class WebSocketService:
             event_payload=payload,
         )
 
-    async def update_ping(self, session_id: UUID) -> None:
+    async def update_ping(self, session_id: UUID, user_id: UUID) -> None:
         session = await self._ws_session_repo.get_by_id(session_id=session_id)
         if session is None:
             raise WebSocketSessionNotFound
+
+        if session.user_id != user_id:
+            raise WebSocketSessionPermissionError
 
         async def _txn(db_session: Any) -> None:
             await self._user_repo.update_last_active(
@@ -110,13 +138,28 @@ class WebSocketService:
             )
 
         await self._tm.run_in_transaction(_txn)
-        await self._conn.update_ping(session_id=session_id)
 
-    async def list_active_users_in_room(self, room_id: UUID) -> list[UUID]:
-        user_ids = await self._conn.list_active_user_ids_in_room(room_id=room_id)
-        return user_ids
+    async def count_active_users_in_room(
+        self, room_id: UUID, user_id: UUID
+    ) -> list[UUID]:
+        membership = await self._membership_repo.exists(
+            room_id=room_id, user_id=user_id
+        )
+        if not membership:
+            raise WebSocketSessionPermissionError
 
-    async def disconnect_user_from_room(self, user_id: UUID, room_id: UUID) -> None:
+        return await self._conn.list_active_user_ids_in_room(room_id=room_id)
+
+    async def disconnect_user_from_room(
+        self, user_id: UUID, room_id: UUID, created_by: UUID
+    ) -> None:
+        room = await self._room_repo.get_by_id(room_id=room_id)
+        if not room:
+            raise RoomNotFound
+
+        if room.created_by != created_by:
+            raise WebSocketSessionPermissionError
+
         async def _txn(db_session: Any) -> None:
             sessions = await self._ws_session_repo.list_by_user_id(
                 user_id=user_id, db_session=db_session
@@ -145,6 +188,3 @@ class WebSocketService:
 
     async def is_user_online(self, user_id: UUID) -> bool:
         return await self._conn.is_user_online(user_id=user_id)
-
-    async def count_websockets_by_room(self, room_id: UUID) -> int:
-        return await self._ws_session_repo.count_by_room(room_id=room_id)

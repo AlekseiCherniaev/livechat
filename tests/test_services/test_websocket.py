@@ -25,10 +25,21 @@ def make_session() -> WebSocketSession:
 
 class TestWebSocketService:
     @fixture
-    def service(self, ws_session_repo, user_repo, outbox_repo, connection_port, tm):
+    def service(
+        self,
+        ws_session_repo,
+        user_repo,
+        room_repo,
+        membership_repo,
+        outbox_repo,
+        connection_port,
+        tm,
+    ):
         return WebSocketService(
             ws_session_repo=ws_session_repo,
             user_repo=user_repo,
+            room_repo=room_repo,
+            membership_repo=membership_repo,
             outbox_repo=outbox_repo,
             connection_port=connection_port,
             transaction_manager=tm,
@@ -58,7 +69,9 @@ class TestWebSocketService:
             dedup_key=f"user_connected:{session.id}",
             db_session=ANY,
         )
-        connection_port.connect.assert_awaited_with(session=session)
+        connection_port.connect_user_to_room.assert_awaited_with(
+            user_id=session.user_id, room_id=session.room_id
+        )
 
     async def test_disconnect_success(
         self, service, ws_session_repo, user_repo, outbox_repo, connection_port, tm
@@ -70,7 +83,7 @@ class TestWebSocketService:
             "app.domain.services.websocket.create_outbox_analytics_event",
             new=AsyncMock(),
         ) as create_event:
-            await service.disconnect(session.id)
+            await service.disconnect(session_id=session.id, user_id=session.user_id)
 
         ws_session_repo.get_by_id.assert_awaited_with(session_id=session.id)
         user_repo.update_last_active.assert_awaited_with(
@@ -87,18 +100,21 @@ class TestWebSocketService:
             dedup_key=f"user_disconnected:{session.id}",
             db_session=ANY,
         )
-        connection_port.disconnect.assert_awaited_with(session_id=session.id)
+        connection_port.disconnect_user_from_room.assert_awaited_with(
+            user_id=session.user_id, room_id=session.room_id
+        )
 
     async def test_disconnect_unknown_session(
         self, service, ws_session_repo, connection_port
     ):
         ws_session_repo.get_by_id.return_value = None
         session_id = uuid4()
+        user_id = uuid4()
 
-        await service.disconnect(session_id)
+        await service.disconnect(session_id=session_id, user_id=user_id)
 
         ws_session_repo.get_by_id.assert_awaited_with(session_id=session_id)
-        connection_port.disconnect.assert_not_awaited()
+        connection_port.disconnect_user_from_room.assert_not_awaited()
 
     async def test_update_ping_success(
         self, service, ws_session_repo, user_repo, connection_port, tm
@@ -106,7 +122,7 @@ class TestWebSocketService:
         session = make_session()
         ws_session_repo.get_by_id.return_value = session
 
-        await service.update_ping(session.id)
+        await service.update_ping(session_id=session.id, user_id=session.user_id)
 
         ws_session_repo.get_by_id.assert_awaited_with(session_id=session.id)
         user_repo.update_last_active.assert_awaited_with(
@@ -115,13 +131,13 @@ class TestWebSocketService:
         ws_session_repo.update_last_ping.assert_awaited_with(
             session_id=session.id, db_session=ANY
         )
-        connection_port.update_ping.assert_awaited_with(session_id=session.id)
 
     async def test_update_ping_not_found(self, service, ws_session_repo):
         ws_session_repo.get_by_id.return_value = None
         session_id = uuid4()
+        user_id = uuid4()
 
         with pytest.raises(WebSocketSessionNotFound):
-            await service.update_ping(session_id)
+            await service.update_ping(session_id=session_id, user_id=user_id)
 
         ws_session_repo.get_by_id.assert_awaited_with(session_id=session_id)

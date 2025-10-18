@@ -25,10 +25,6 @@ class WebSocketSessionRepository(Protocol):
         self, user_id: UUID, db_session: Any | None = None
     ) -> None: ...
 
-    async def count_by_room(
-        self, room_id: UUID, db_session: Any | None = None
-    ) -> int: ...
-
     async def update_last_ping(
         self, session_id: UUID, db_session: Any | None = None
     ) -> None: ...
