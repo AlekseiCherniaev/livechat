@@ -13,14 +13,8 @@ class MessagePublic(BaseModel):
 
 
 class SendMessageRequest(BaseModel):
-    user_id: UUID
     content: str = Field(max_length=256)
 
 
 class EditMessageRequest(BaseModel):
-    user_id: UUID
     new_content: str = Field(max_length=256)
-
-
-class DeleteMessageRequest(BaseModel):
-    user_id: UUID

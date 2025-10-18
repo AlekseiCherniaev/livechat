@@ -19,8 +19,8 @@ router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 @router.get("/")
 async def list_notifications(
-    unread_only: bool = Query(False),
-    limit: int = Query(50, ge=1, le=200),
+    unread_only: bool = Query(default=False),
+    limit: int = Query(default=50, ge=1, le=200),
     current_user_id: UUID = Depends(get_current_user_id),
     notification_service: NotificationService = Depends(get_notification_service),
 ) -> list[NotificationPublic]:

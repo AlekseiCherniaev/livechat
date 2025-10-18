@@ -140,6 +140,7 @@ def get_websocket_session_repo(
 def get_message_service(
     message_repo: MessageRepository = Depends(get_message_repo),
     user_repo: UserRepository = Depends(get_user_repo),
+    membership_repo: RoomMembershipRepository = Depends(get_room_membership_repo),
     outbox_repo: OutboxRepository = Depends(get_outbox_repo),
     connection_port: ConnectionPort = Depends(get_connection),
     transaction_manager: TransactionManager = Depends(get_transaction_manager),
@@ -147,6 +148,7 @@ def get_message_service(
     return MessageService(
         message_repo=message_repo,
         user_repo=user_repo,
+        membership_repo=membership_repo,
         outbox_repo=outbox_repo,
         connection_port=connection_port,
         transaction_manager=transaction_manager,
