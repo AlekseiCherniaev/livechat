@@ -12,5 +12,10 @@ class RoomAlreadyExists(DomainException):
 
 
 class NoChangesDetected(DomainException):
-    def __init__(self, message: str = "Nothing to change in room ") -> None:
+    def __init__(self, message: str = "Nothing to change in room") -> None:
+        super().__init__(message)
+
+
+class RoomPermissionError(DomainException):
+    def __init__(self, message: str = "User can't access room") -> None:
         super().__init__(message)

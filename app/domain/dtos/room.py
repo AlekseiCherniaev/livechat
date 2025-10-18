@@ -15,6 +15,7 @@ class RoomCreateDTO:
 
 @dataclass
 class RoomUpdateDTO:
+    created_by: UUID
     description: str | None = None
     is_public: bool | None = None
 

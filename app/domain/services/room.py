@@ -10,7 +10,11 @@ from app.core.constants import (
     AnalyticsEventType,
     RoomRole,
 )
-from app.domain.dtos.join_request import JoinRequestCreateDTO, JoinRequestPublicDTO
+from app.domain.dtos.join_request import (
+    JoinRequestCreateDTO,
+    JoinRequestPublicDTO,
+    join_request_to_dto,
+)
 from app.domain.dtos.room import (
     RoomCreateDTO,
     RoomPublicDTO,
@@ -29,6 +33,7 @@ from app.domain.exceptions.room import (
     RoomAlreadyExists,
     RoomNotFound,
     NoChangesDetected,
+    RoomPermissionError,
 )
 from app.domain.exceptions.user import UserNotFound
 from app.domain.ports.analytics import AnalyticsPort
@@ -78,7 +83,6 @@ class RoomService:
                 description=room_data.description,
                 is_public=room_data.is_public,
                 created_by=room_data.created_by,
-                participants_count=0,
             )
             room = await self._room_repo.save(room=room, db_session=db_session)
             await self._add_participant(
@@ -111,6 +115,9 @@ class RoomService:
         room = await self._room_repo.get_by_id(room_id=room_id)
         if not room:
             raise RoomNotFound
+
+        if room.created_by != room_data.created_by:
+            raise RoomPermissionError
 
         changed = False
         if (
@@ -146,10 +153,13 @@ class RoomService:
 
         return room_to_dto(room=room_update)
 
-    async def delete_room(self, room_id: UUID) -> None:
+    async def delete_room(self, room_id: UUID, created_by: UUID) -> None:
         room = await self._room_repo.get_by_id(room_id=room_id)
         if not room:
             raise RoomNotFound
+
+        if room.created_by != created_by:
+            raise RoomPermissionError
 
         async def _txn(db_session: Any) -> None:
             await self._room_repo.delete_by_id(room_id=room_id, db_session=db_session)
@@ -172,6 +182,7 @@ class RoomService:
         room = await self._room_repo.get_by_id(room_id=room_id)
         if room is None:
             raise RoomNotFound
+
         return room_to_dto(room=room)
 
     async def list_room_users(self, room_id: UUID) -> list[UserPublicDTO]:
@@ -191,19 +202,22 @@ class RoomService:
         return [room_to_dto(room) for room in rooms]
 
     async def list_room_join_requests(
-        self, room_id: UUID
+        self, room_id: UUID, created_by: UUID
     ) -> list[JoinRequestPublicDTO]:
+        room = await self._room_repo.get_by_id(room_id=room_id)
+        if not room:
+            raise RoomNotFound
+
+        if room.created_by != created_by:
+            raise RoomPermissionError
+
         join_requests = await self._join_repo.list_by_room(
             room_id=room_id, status=JoinRequestStatus.PENDING
         )
-        if not join_requests:
-            return []
 
         return [
-            JoinRequestPublicDTO(
-                username=user.username,
-                room_name=room.name,
-                message=join_request.message,
+            join_request_to_dto(
+                join_request=join_request, room_name=room.name, username=user.username
             )
             for join_request, user, room in join_requests
         ]
@@ -214,14 +228,10 @@ class RoomService:
         join_requests = await self._join_repo.list_by_user(
             user_id=user_id, status=JoinRequestStatus.PENDING
         )
-        if not join_requests:
-            return []
 
         return [
-            JoinRequestPublicDTO(
-                username=user.username,
-                room_name=room.name,
-                message=join_request.message,
+            join_request_to_dto(
+                join_request=join_request, room_name=room.name, username=user.username
             )
             for join_request, user, room in join_requests
         ]
@@ -306,8 +316,11 @@ class RoomService:
             ).info("Join request created")
 
         await self._tm.run_in_transaction(__txn)
+        return None
 
-    async def handle_join_request(self, request_id: UUID, accept: bool) -> None:
+    async def handle_join_request(
+        self, request_id: UUID, created_by: UUID, accept: bool
+    ) -> None:
         request = await self._join_repo.get_by_id(request_id=request_id)
         if not request:
             raise JoinRequestNotFound
@@ -315,6 +328,9 @@ class RoomService:
         room = await self._room_repo.get_by_id(room_id=request.room_id)
         if room is None:
             raise RoomNotFound
+
+        if room.created_by != created_by:
+            raise RoomPermissionError
 
         async def _txn(db_session: Any) -> None:
             if accept:
@@ -388,10 +404,15 @@ class RoomService:
 
         return None
 
-    async def remove_participant(self, room_id: UUID, user_id: UUID) -> None:
+    async def remove_participant(
+        self, room_id: UUID, user_id: UUID, created_by: UUID
+    ) -> None:
         room = await self._room_repo.get_by_id(room_id=room_id)
         if room is None:
             raise RoomNotFound
+
+        if room.created_by != created_by:
+            raise RoomPermissionError
 
         async def _txn(db_session: Any) -> None:
             await self._membership_repo.delete(

@@ -86,17 +86,20 @@ class TestRoomService:
             await service.create_room(dto)
 
     async def test_update_room_success(self, service, room_repo, outbox_repo, tm):
+        created_by = uuid4()
         room = Room(
             id=uuid4(),
             name="Old",
             description="old",
             is_public=True,
-            created_by=uuid4(),
+            created_by=created_by,
         )
         room_repo.get_by_id.return_value = room
         room_repo.save.return_value = room
 
-        dto = RoomUpdateDTO(description="new desc", is_public=None)
+        dto = RoomUpdateDTO(
+            description="new desc", is_public=None, created_by=created_by
+        )
 
         result = await service.update_room(room.id, dto)
         assert result.description == "new desc"
@@ -108,24 +111,32 @@ class TestRoomService:
     async def test_update_room_not_found(self, service, room_repo):
         room_repo.get_by_id.return_value = None
         with pytest.raises(RoomNotFound):
-            await service.update_room(uuid4(), RoomUpdateDTO(description="x"))
+            await service.update_room(
+                uuid4(), RoomUpdateDTO(description="x", created_by=uuid4())
+            )
 
     async def test_update_room_no_changes(self, service, room_repo):
+        created_by = uuid4()
         room = Room(
-            id=uuid4(), name="A", description="same", is_public=True, created_by=uuid4()
+            id=uuid4(),
+            name="A",
+            description="same",
+            is_public=True,
+            created_by=created_by,
         )
         room_repo.get_by_id.return_value = room
-        dto = RoomUpdateDTO(description="same", is_public=True)
+        dto = RoomUpdateDTO(description="same", is_public=True, created_by=created_by)
         with pytest.raises(NoChangesDetected):
             await service.update_room(room.id, dto)
 
     async def test_delete_room_success(self, service, room_repo, outbox_repo, tm):
+        created_by = uuid4()
         room = Room(
-            id=uuid4(), name="R", description="", is_public=True, created_by=uuid4()
+            id=uuid4(), name="R", description="", is_public=True, created_by=created_by
         )
         room_repo.get_by_id.return_value = room
 
-        await service.delete_room(room_id=room.id)
+        await service.delete_room(room_id=room.id, created_by=created_by)
 
         room_repo.delete_by_id.assert_awaited_once()
         outbox_repo.save.assert_awaited_once()
@@ -134,7 +145,7 @@ class TestRoomService:
     async def test_delete_room_not_found(self, service, room_repo):
         room_repo.get_by_id.return_value = None
         with pytest.raises(RoomNotFound):
-            await service.delete_room(uuid4())
+            await service.delete_room(uuid4(), created_by=uuid4())
 
     async def test_get_room_success(self, service, room_repo):
         room = Room(
@@ -209,12 +220,13 @@ class TestRoomService:
         req = JoinRequest(
             id=uuid4(), room_id=rid, user_id=uid, status=JoinRequestStatus.PENDING
         )
+        created_by = uuid4()
         join_repo.get_by_id.return_value = req
         room_repo.get_by_id.return_value = Room(
-            id=rid, name="R", created_by=uuid4(), is_public=True
+            id=rid, name="R", created_by=created_by, is_public=True
         )
 
-        await service.handle_join_request(req.id, accept=True)
+        await service.handle_join_request(req.id, accept=True, created_by=created_by)
 
         join_repo.save.assert_awaited_once()
         outbox_repo.save.assert_awaited()
@@ -237,7 +249,7 @@ class TestRoomService:
         join_repo.get_by_id.return_value = req
         room_repo.get_by_id.return_value = None
         with pytest.raises(RoomNotFound):
-            await service.handle_join_request(req.id, True)
+            await service.handle_join_request(req.id, accept=True, created_by=uuid4())
 
     async def test_remove_participant_creator_deletes_room(
         self, service, room_repo, membership_repo, tm, outbox_repo
@@ -246,7 +258,7 @@ class TestRoomService:
         room = Room(id=rid, name="A", created_by=uid, is_public=True)
         room_repo.get_by_id.return_value = room
 
-        await service.remove_participant(rid, uid)
+        await service.remove_participant(rid, uid, created_by=uid)
 
         membership_repo.delete.assert_awaited_once()
         room_repo.delete_by_id.assert_awaited_once()
@@ -256,11 +268,12 @@ class TestRoomService:
     async def test_remove_participant_non_creator(
         self, service, room_repo, membership_repo, tm, outbox_repo
     ):
+        creator_id = uuid4()
         rid, uid = uuid4(), uuid4()
-        room = Room(id=rid, name="A", created_by=uuid4(), is_public=True)
+        room = Room(id=rid, name="A", created_by=creator_id, is_public=True)
         room_repo.get_by_id.return_value = room
 
-        await service.remove_participant(rid, uid)
+        await service.remove_participant(rid, uid, created_by=creator_id)
 
         membership_repo.delete.assert_awaited_once()
         room_repo.remove_participant.assert_awaited_once()
@@ -270,4 +283,4 @@ class TestRoomService:
     async def test_remove_participant_room_not_found(self, service, room_repo):
         room_repo.get_by_id.return_value = None
         with pytest.raises(RoomNotFound):
-            await service.remove_participant(uuid4(), uuid4())
+            await service.remove_participant(uuid4(), uuid4(), created_by=uuid4())
