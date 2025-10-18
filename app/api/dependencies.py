@@ -45,3 +45,13 @@ async def get_current_user_id(
     user_id = await user_service.get_user_id_by_session(session_id=session_cookie)
     logger.bind(session_cookie=session_cookie).debug("Got current user id")
     return user_id
+
+
+async def get_current_session_id(
+    request: Request, user_service: UserService = Depends(get_user_service)
+) -> UUID:
+    session_cookie = request.cookies.get("session_id")
+    logger.bind(session_cookie=session_cookie).debug("Getting current session id...")
+    session_id = await user_service.get_valid_session_id(session_id=session_cookie)
+    logger.bind(session_cookie=session_cookie).debug("Got current session id")
+    return session_id

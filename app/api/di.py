@@ -208,14 +208,18 @@ def get_user_service(
 def get_websocket_service(
     ws_session_repo: WebSocketSessionRepository = Depends(get_websocket_session_repo),
     user_repo: UserRepository = Depends(get_user_repo),
+    room_repo: RoomRepository = Depends(get_room_repo),
     outbox_repo: OutboxRepository = Depends(get_outbox_repo),
+    membership_repo: RoomMembershipRepository = Depends(get_room_membership_repo),
     connection_port: ConnectionPort = Depends(get_connection),
     transaction_manager: TransactionManager = Depends(get_transaction_manager),
 ) -> WebSocketService:
     return WebSocketService(
         ws_session_repo=ws_session_repo,
         user_repo=user_repo,
+        room_repo=room_repo,
         outbox_repo=outbox_repo,
+        membership_repo=membership_repo,
         connection_port=connection_port,
         transaction_manager=transaction_manager,
     )
