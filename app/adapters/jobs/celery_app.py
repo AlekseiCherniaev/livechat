@@ -30,6 +30,7 @@ from app.domain.entities.notification import Notification
 
 logger = structlog.get_logger(__name__)
 
+# TODO replace with https://github.com/python-arq/arq
 celery_app = Celery(
     "outbox_worker",
     broker=get_settings().redis_celery_broker_dsn,

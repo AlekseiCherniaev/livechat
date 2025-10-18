@@ -4,10 +4,9 @@ from app.core.constants import BroadcastEventType
 from app.domain.entities.event_payload import EventPayload
 from app.domain.entities.notification import Notification
 from app.domain.ports.connection import ConnectionPort
-from app.domain.ports.notification_sender import NotificationSenderPort
 
 
-class WebSocketNotificationSender(NotificationSenderPort):
+class WebSocketNotificationSender:
     def __init__(self, connection_port: ConnectionPort):
         self._conn = connection_port
 
