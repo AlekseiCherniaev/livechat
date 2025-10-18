@@ -72,7 +72,7 @@ class RoomService:
         if not await self._user_repo.get_by_id(user_id=room_data.created_by):
             raise UserNotFound
 
-        async def _txn(db_session: Any):
+        async def _txn(db_session: Any) -> Room:
             room = Room(
                 name=room_data.name,
                 description=room_data.description,
@@ -125,7 +125,7 @@ class RoomService:
         if not changed:
             raise NoChangesDetected
 
-        async def _txn(db_session: Any):
+        async def _txn(db_session: Any) -> Room:
             room.updated_at = datetime.now(timezone.utc)
             room_saved = await self._room_repo.save(room=room, db_session=db_session)
 
@@ -151,7 +151,7 @@ class RoomService:
         if not room:
             raise RoomNotFound
 
-        async def _txn(db_session: Any):
+        async def _txn(db_session: Any) -> None:
             await self._room_repo.delete_by_id(room_id=room_id, db_session=db_session)
 
             await create_outbox_analytics_event(
@@ -241,7 +241,7 @@ class RoomService:
 
         if room.is_public:
 
-            async def _txn(db_session: Any):
+            async def _txn(db_session: Any) -> None:
                 await self._add_participant(
                     room_id=room.id,
                     user_id=join_request_data.user_id,
@@ -264,7 +264,7 @@ class RoomService:
                 )
 
             await self._tm.run_in_transaction(_txn)
-            return
+            return None
 
         already_requested = await self._join_repo.exists(
             room_id=room.id, user_id=join_request_data.user_id
@@ -272,7 +272,7 @@ class RoomService:
         if already_requested:
             raise JoinRequestAlreadyExists
 
-        async def __txn(db_session: Any):
+        async def __txn(db_session: Any) -> None:
             request = JoinRequest(
                 room_id=room.id,
                 user_id=join_request_data.user_id,
@@ -316,7 +316,7 @@ class RoomService:
         if room is None:
             raise RoomNotFound
 
-        async def _txn(db_session: Any):
+        async def _txn(db_session: Any) -> None:
             if accept:
                 await self._add_participant(
                     room_id=request.room_id,
@@ -393,7 +393,7 @@ class RoomService:
         if room is None:
             raise RoomNotFound
 
-        async def _txn(db_session: Any):
+        async def _txn(db_session: Any) -> None:
             await self._membership_repo.delete(
                 room_id=room_id, user_id=user_id, db_session=db_session
             )

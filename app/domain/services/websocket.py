@@ -34,7 +34,7 @@ class WebSocketService:
         self._tm = transaction_manager
 
     async def connect(self, session: WebSocketSession) -> None:
-        async def _txn(db_session: Any):
+        async def _txn(db_session: Any) -> None:
             await self._user_repo.update_last_active(
                 user_id=session.user_id, db_session=db_session
             )
@@ -60,7 +60,7 @@ class WebSocketService:
             logger.debug("Disconnect called for unknown session", session_id=session_id)
             return
 
-        async def _txn(db_session: Any):
+        async def _txn(db_session: Any) -> None:
             await self._user_repo.update_last_active(
                 user_id=session.user_id, db_session=db_session
             )
@@ -101,7 +101,7 @@ class WebSocketService:
         if session is None:
             raise WebSocketSessionNotFound
 
-        async def _txn(db_session: Any):
+        async def _txn(db_session: Any) -> None:
             await self._user_repo.update_last_active(
                 user_id=session.user_id, db_session=db_session
             )
@@ -117,7 +117,7 @@ class WebSocketService:
         return user_ids
 
     async def disconnect_user_from_room(self, user_id: UUID, room_id: UUID) -> None:
-        async def _txn(db_session: Any):
+        async def _txn(db_session: Any) -> None:
             sessions = await self._ws_session_repo.list_by_user_id(
                 user_id=user_id, db_session=db_session
             )

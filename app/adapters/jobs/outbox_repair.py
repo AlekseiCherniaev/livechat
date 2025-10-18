@@ -33,7 +33,7 @@ class OutboxRepairJob:
         self._batch_size = batch_size
         self._delay_between_batches = delay_between_batches
 
-    async def run_once(self):
+    async def run_once(self) -> None:
         since = datetime.now(timezone.utc) - timedelta(minutes=self._window_minutes)
         logger.bind(since=str(since)).info("Starting OutboxRepairJob")
 
@@ -54,7 +54,7 @@ class OutboxRepairJob:
             if not messages:
                 break
 
-            all_keys = []
+            all_keys: list[str] = []
             for msg in messages:
                 all_keys.extend(
                     (
@@ -110,7 +110,7 @@ class OutboxRepairJob:
 
         logger.bind(repaired=repaired).info("Outbox repair completed")
 
-    async def run_forever(self, interval_seconds: int = 60):
+    async def run_forever(self, interval_seconds: int = 60) -> None:
         while True:
             try:
                 await self.run_once()

@@ -1,11 +1,11 @@
 import asyncio
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, TypeVar, Callable, Awaitable
 from uuid import UUID
 
 import structlog
 from celery import Celery
-from clickhouse_connect.driver import AsyncClient
+from clickhouse_connect.driver.asyncclient import AsyncClient
 from pymongo import AsyncMongoClient
 from pymongo.asynchronous.database import AsyncDatabase
 from redis.asyncio import Redis
@@ -81,7 +81,10 @@ async def get_clickhouse() -> AsyncClient:
     return clickhouse_client
 
 
-def run_async(func, *args, **kwargs):
+T = TypeVar("T")
+
+
+def run_async(func: Callable[..., Awaitable[T]], *args: Any, **kwargs: Any) -> T:
     try:
         loop = asyncio.get_event_loop()
     except RuntimeError:
@@ -98,7 +101,7 @@ def run_async(func, *args, **kwargs):
     max_retries=3,
     default_retry_delay=30,
 )
-def process_outbox_sync():
+def process_outbox_sync() -> None:
     run_async(process_outbox)
 
 
@@ -107,11 +110,11 @@ def process_outbox_sync():
     max_retries=3,
     default_retry_delay=30,
 )
-def run_outbox_repair_sync():
+def run_outbox_repair_sync() -> None:
     run_async(run_outbox_repair)
 
 
-async def run_outbox_repair():
+async def run_outbox_repair() -> None:
     try:
         redis_client = get_redis_client()
         mongo_db = await get_mongo_db()
@@ -134,7 +137,7 @@ async def run_outbox_repair():
         logger.warning("OutboxRepairJob already running, skipping this run")
 
 
-async def process_outbox():
+async def process_outbox() -> None:
     try:
         redis_client = get_redis_client()
         mongo_db = await get_mongo_db()
@@ -163,8 +166,8 @@ async def process_outbox():
                         payload = outbox.payload
                         notification = Notification(
                             user_id=UUID(payload.get("user_id")),
-                            payload=payload.get("payload"),
-                            read=payload.get("read"),
+                            payload=payload.get("payload", {}),
+                            read=payload.get("read", False),
                             source_id=UUID(payload.get("source_id")),
                             id=UUID(payload.get("id")),
                             type=NotificationType(payload.get("type")),

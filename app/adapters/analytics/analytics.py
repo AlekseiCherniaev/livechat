@@ -115,4 +115,4 @@ class ClickHouseAnalyticsRepository:
         if not result.result_rows:
             return 0
         row = next(result.named_results())
-        return row["cnt"]
+        return row["cnt"]  # type: ignore

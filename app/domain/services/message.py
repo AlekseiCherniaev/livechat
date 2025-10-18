@@ -43,7 +43,7 @@ class MessageService:
         if user is None:
             raise UserNotFound
 
-        async def _txn(db_session: Any):
+        async def _txn(db_session: Any) -> Message:
             message = Message(
                 room_id=room_id,
                 user_id=user_id,
@@ -68,7 +68,7 @@ class MessageService:
             )
             return message
 
-        message_create = await self._tm.run_in_transaction(_txn)
+        message_create: Message = await self._tm.run_in_transaction(_txn)
         payload = EventPayload(
             username=user.username,
             content=message_create.content,
@@ -94,7 +94,7 @@ class MessageService:
         if message.user_id != user_id:
             raise MessagePermissionError
 
-        async def _txn(db_session: Any):
+        async def _txn(db_session: Any) -> Message:
             message.content = new_content
             message.edited = True
             message.updated_at = datetime.now(timezone.utc)
@@ -113,7 +113,7 @@ class MessageService:
             logger.bind(message_id=message.id).info("Message edited")
             return message
 
-        message_update = await self._tm.run_in_transaction(_txn)
+        message_update: Message = await self._tm.run_in_transaction(_txn)
         payload = EventPayload(
             username=user.username,
             content=message_update.content,
@@ -137,7 +137,7 @@ class MessageService:
         if message.user_id != user_id:
             raise MessagePermissionError
 
-        async def _txn(db_session: Any):
+        async def _txn(db_session: Any) -> None:
             await self._message_repo.delete_by_id(
                 message_id=message_id, db_session=db_session
             )

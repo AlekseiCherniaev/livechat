@@ -118,7 +118,7 @@ class MessageByIdModel(Model):  # type: ignore
         )
 
 
-class MessageGlobalModel(Model):
+class MessageGlobalModel(Model):  # type: ignore
     __keyspace__ = get_settings().cassandra_keyspace
     __table_name__ = "messages_global"
 

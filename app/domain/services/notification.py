@@ -41,7 +41,7 @@ class NotificationService:
         if notification is None:
             raise NotificationNotFound
 
-        async def _txn(db_session: Any):
+        async def _txn(db_session: Any) -> None:
             await self._notif_repo.mark_as_read(
                 notification_id=notification_id, db_session=db_session
             )
@@ -61,7 +61,7 @@ class NotificationService:
         await self._tm.run_in_transaction(_txn)
 
     async def mark_all_as_read(self, user_id: UUID) -> None:
-        async def _txn(db_session: Any):
+        async def _txn(db_session: Any) -> None:
             await self._notif_repo.mark_all_as_read(
                 user_id=user_id, db_session=db_session
             )
