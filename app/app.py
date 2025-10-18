@@ -3,9 +3,7 @@ from typing import AsyncGenerator, Any
 
 import structlog
 from fastapi import FastAPI
-from fastapi.openapi.docs import get_swagger_ui_html
 from redis.asyncio import Redis
-from starlette.responses import HTMLResponse
 from starlette.staticfiles import StaticFiles
 
 from app.adapters.analytics.clickhouse_client import create_clickhouse_client
@@ -67,20 +65,6 @@ def init_app() -> FastAPI:
         StaticFiles(directory=f"{get_settings().static_url_path}"),
         name="static",
     )
-
-    @app.get("/api/internal/docs", include_in_schema=False)
-    async def custom_swagger_ui_html() -> HTMLResponse:
-        return get_swagger_ui_html(
-            openapi_url="/api/internal/openapi.json",
-            title="Livechat API",
-            swagger_css_url="static/swagger-ui.css",
-            swagger_js_url="static/swagger-ui-bundle.js",
-            swagger_favicon_url="static/fastapi.png",
-        )
-
-    @app.get("/api/health", tags=["Health"])
-    async def health_check() -> dict[str, str]:
-        return {"status": "ok"}
 
     app.include_router(get_main_router())
     register_exception_handlers(app)
