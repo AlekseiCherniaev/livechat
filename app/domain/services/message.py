@@ -171,8 +171,10 @@ class MessageService:
     async def get_recent_messages(
         self, room_id: UUID, user_id: UUID, limit: int
     ) -> list[MessagePublicDTO]:
-        room_users = await self._membership_repo.list_users(room_id=room_id)
-        if user_id not in (user.id for user in room_users):
+        membership = await self._membership_repo.exists(
+            room_id=room_id, user_id=user_id
+        )
+        if not membership:
             raise MessagePermissionError
 
         messages = await self._message_repo.get_recent_by_room(
