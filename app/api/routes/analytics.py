@@ -26,7 +26,7 @@ async def get_user_activity(
     return await analytics_service.get_user_activity(user_id=user_id)
 
 
-@router.get("/top-active-rooms")
+@router.get("/get-top-active-rooms")
 async def top_active_rooms(
     limit: int = Query(default=50, ge=1, le=200),
     analytics_service: AnalyticsService = Depends(get_analytics_service),
@@ -34,7 +34,7 @@ async def top_active_rooms(
     return await analytics_service.top_active_rooms(limit=limit)
 
 
-@router.get("/message-per-minutes")
+@router.get("/get-message-per-minutes")
 async def messages_per_minute(
     room_id: UUID,
     since_minutes: int,

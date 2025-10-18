@@ -12,7 +12,7 @@ logger = structlog.get_logger(__name__)
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-@router.post("/register")
+@router.post("/register-user")
 async def register(
     user_data: UserAuth, user_service: UserService = Depends(get_user_service)
 ) -> Response:
@@ -23,7 +23,7 @@ async def register(
     return Response(status_code=status.HTTP_200_OK)
 
 
-@router.post("/login")
+@router.post("/login-user")
 async def login(
     user_data: UserAuth,
     response: Response,
@@ -38,7 +38,7 @@ async def login(
     return response
 
 
-@router.post("/logout")
+@router.post("/logout-user")
 async def logout(
     request: Request,
     response: Response,
@@ -53,6 +53,6 @@ async def logout(
     return response
 
 
-@router.get("/me")
+@router.get("/get-me")
 async def me(current_user: UserPublic = Depends(get_current_user)) -> UserPublic:
     return current_user

@@ -17,7 +17,7 @@ logger = structlog.get_logger(__name__)
 router = APIRouter(prefix="/messages", tags=["messages"])
 
 
-@router.post("/{room_id}")
+@router.post("/create-message/{room_id}")
 async def send_message(
     room_id: UUID,
     message_data: SendMessageRequest,
@@ -34,7 +34,7 @@ async def send_message(
     return Response(status_code=status.HTTP_200_OK)
 
 
-@router.patch("/{message_id}")
+@router.put("/update-message/{message_id}")
 async def edit_message(
     message_id: UUID,
     message_data: EditMessageRequest,
@@ -53,7 +53,7 @@ async def edit_message(
     return Response(status_code=status.HTTP_200_OK)
 
 
-@router.delete("/{message_id}")
+@router.delete("/delete-message/{message_id}")
 async def delete_message(
     message_id: UUID,
     current_user_id: UUID = Depends(get_current_user_id),
@@ -67,7 +67,7 @@ async def delete_message(
     return Response(status_code=status.HTTP_200_OK)
 
 
-@router.get("/{room_id}/recent")
+@router.get("/get-recent-messages/{room_id}")
 async def get_recent_messages(
     room_id: UUID,
     limit: int = Query(default=50, ge=1, le=200),

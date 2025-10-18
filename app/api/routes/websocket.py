@@ -125,7 +125,7 @@ async def typing_indicator(
     return Response(status_code=status.HTTP_200_OK)
 
 
-@router.get("/room/{room_id}/active-users")
+@router.get("/get-active-user-ids/{room_id}")
 async def get_active_users_in_room(
     room_id: UUID,
     current_user_id: UUID = Depends(get_current_user_id),
@@ -136,7 +136,7 @@ async def get_active_users_in_room(
     )
 
 
-@router.post("/room/{room_id}/disconnect-user/{user_id}")
+@router.post("/disconnect-user/{room_id}/{user_id}")
 async def disconnect_user_from_room(
     room_id: UUID,
     user_id: UUID,
@@ -149,7 +149,7 @@ async def disconnect_user_from_room(
     return Response(status_code=status.HTTP_200_OK)
 
 
-@router.get("/user/{user_id}/online")
+@router.get("/get-user-is-online/{user_id}")
 async def is_user_online(
     user_id: UUID,
     ws_service: WebSocketService = Depends(get_websocket_service),

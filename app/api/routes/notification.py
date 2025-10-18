@@ -17,7 +17,7 @@ logger = structlog.get_logger(__name__)
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
-@router.get("/")
+@router.get("/get-notifications")
 async def list_notifications(
     unread_only: bool = Query(default=False),
     limit: int = Query(default=50, ge=1, le=200),
@@ -39,7 +39,7 @@ async def list_notifications(
     ]
 
 
-@router.post("/{notification_id}/read")
+@router.put("/update-notification/{notification_id}")
 async def mark_as_read(
     notification_id: UUID,
     current_user_id: UUID = Depends(get_current_user_id),
@@ -57,7 +57,7 @@ async def mark_as_read(
     return Response(status_code=status.HTTP_200_OK)
 
 
-@router.post("/read-all")
+@router.put("/update-notifications/read-all")
 async def mark_all_as_read(
     current_user_id: UUID = Depends(get_current_user_id),
     notification_service: NotificationService = Depends(get_notification_service),
@@ -68,7 +68,7 @@ async def mark_all_as_read(
     return Response(status_code=status.HTTP_200_OK)
 
 
-@router.get("/count")
+@router.get("/get-notifications-count-unread")
 async def count_unread(
     current_user_id: UUID = Depends(get_current_user_id),
     notification_service: NotificationService = Depends(get_notification_service),
@@ -81,7 +81,7 @@ async def count_unread(
     return NotificationCountResponse(unread_count=unread_count)
 
 
-@router.delete("/{notification_id}")
+@router.delete("/delete-notification/{notification_id}")
 async def delete_notification(
     notification_id: UUID,
     current_user_id: UUID = Depends(get_current_user_id),

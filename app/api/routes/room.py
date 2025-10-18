@@ -21,7 +21,7 @@ logger = structlog.get_logger(__name__)
 router = APIRouter(prefix="/rooms", tags=["rooms"])
 
 
-@router.post("")
+@router.post("/create-room")
 async def create_room(
     room_data: RoomCreate,
     current_user_id: UUID = Depends(get_current_user_id),
@@ -37,7 +37,7 @@ async def create_room(
     return RoomPublic.model_validate(asdict(room))
 
 
-@router.patch("/{room_id}")
+@router.put("/update-room/{room_id}")
 async def update_room(
     room_id: UUID,
     room_data: RoomUpdate,
@@ -52,7 +52,7 @@ async def update_room(
     return RoomPublic.model_validate(asdict(room))
 
 
-@router.delete("/{room_id}")
+@router.delete("/delete-room/{room_id}")
 async def delete_room(
     room_id: UUID,
     current_user_id: UUID = Depends(get_current_user_id),
@@ -64,7 +64,7 @@ async def delete_room(
     return Response(status_code=status.HTTP_200_OK)
 
 
-@router.get("/{room_id}", response_model=RoomPublic)
+@router.get("/get-room/{room_id}", response_model=RoomPublic)
 async def get_room(
     room_id: UUID,
     _: UUID = Depends(get_current_user_id),
@@ -76,7 +76,7 @@ async def get_room(
     return RoomPublic.model_validate(asdict(room))
 
 
-@router.get("/{room_id}/users")
+@router.get("/get-users/{room_id}")
 async def list_room_users(
     room_id: UUID,
     _: UUID = Depends(get_current_user_id),
@@ -88,19 +88,18 @@ async def list_room_users(
     return [UserPublic.model_validate(asdict(user)) for user in users]
 
 
-@router.get("/user/{user_id}")
+@router.get("/get-rooms")
 async def list_rooms_for_user(
-    user_id: UUID,
-    _: UUID = Depends(get_current_user_id),
+    current_user_id: UUID = Depends(get_current_user_id),
     room_service: RoomService = Depends(get_room_service),
 ) -> list[RoomPublic]:
-    logger.bind(user_id=user_id).debug("Fetching user rooms...")
-    rooms = await room_service.list_rooms_for_user(user_id=user_id)
-    logger.bind(user_id=user_id, count=len(rooms)).debug("Fetched user rooms")
+    logger.bind(user_id=current_user_id).debug("Fetching user rooms...")
+    rooms = await room_service.list_rooms_for_user(user_id=current_user_id)
+    logger.bind(user_id=current_user_id, count=len(rooms)).debug("Fetched user rooms")
     return [RoomPublic.model_validate(asdict(room)) for room in rooms]
 
 
-@router.get("/top")
+@router.get("/get-top-rooms")
 async def list_top_rooms(
     limit: int = Query(default=10, ge=1, le=100),
     only_public: bool = Query(default=True),
@@ -113,7 +112,7 @@ async def list_top_rooms(
     return [RoomPublic.model_validate(asdict(room)) for room in rooms]
 
 
-@router.get("/{room_id}/join-requests")
+@router.get("/get-join-requests-by-room/{room_id}")
 async def list_room_join_requests(
     room_id: UUID,
     current_user_id: UUID = Depends(get_current_user_id),
@@ -127,7 +126,7 @@ async def list_room_join_requests(
     return [JoinRequestPublic.model_validate(asdict(request)) for request in requests]
 
 
-@router.get("/users/{user_id}/join-requests")
+@router.get("/get-join-requests-by-user")
 async def list_user_join_requests(
     current_user_id: UUID = Depends(get_current_user_id),
     room_service: RoomService = Depends(get_room_service),
@@ -140,7 +139,7 @@ async def list_user_join_requests(
     return [JoinRequestPublic.model_validate(asdict(request)) for request in requests]
 
 
-@router.get("/search")
+@router.get("/get-search-rooms")
 async def search_rooms(
     text: str = Query(..., min_length=1, max_length=32),
     limit: int = Query(default=20, ge=1, le=100),
@@ -153,7 +152,7 @@ async def search_rooms(
     return [RoomPublic.model_validate(asdict(room)) for room in rooms]
 
 
-@router.post("/join")
+@router.post("/create-join-request")
 async def request_join(
     join_request: SendJoinRequest,
     current_user_id: UUID = Depends(get_current_user_id),
@@ -171,7 +170,7 @@ async def request_join(
     return Response(status_code=status.HTTP_200_OK)
 
 
-@router.post("/join/{request_id}/handle")
+@router.post("/handle-join-request/{request_id}")
 async def handle_join_request(
     request_id: UUID,
     current_user_id: UUID = Depends(get_current_user_id),
@@ -190,7 +189,7 @@ async def handle_join_request(
     return Response(status_code=status.HTTP_200_OK)
 
 
-@router.delete("/{room_id}/users/{user_id}")
+@router.delete("/remove-user/{room_id}/{user_id}")
 async def remove_participant(
     room_id: UUID,
     user_id: UUID,
