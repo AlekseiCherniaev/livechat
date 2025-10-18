@@ -21,8 +21,8 @@ class NotificationRepository(Protocol):
         db_session: Any | None = None,
     ) -> list[Notification]: ...
 
-    async def delete_by_user_id(
-        self, user_id: UUID, db_session: Any | None = None
+    async def delete_by_id(
+        self, notification_id: UUID, user_id: UUID, db_session: Any | None = None
     ) -> None: ...
 
     async def count_unread(

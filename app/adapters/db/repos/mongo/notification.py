@@ -51,10 +51,16 @@ class MongoNotificationRepository:
         )
         return [document_to_notification(doc) async for doc in cursor]
 
-    async def delete_by_user_id(
-        self, user_id: UUID, db_session: AsyncClientSession | None = None
+    async def delete_by_id(
+        self,
+        notification_id: UUID,
+        user_id: UUID,
+        db_session: AsyncClientSession | None = None,
     ) -> None:
-        await self._col.delete_many({"user_id": str(user_id)}, session=db_session)
+        await self._col.delete_one(
+            {"_id": str(notification_id), "user_id": str(user_id)},
+            session=db_session,
+        )
 
     async def count_unread(
         self, user_id: UUID, db_session: AsyncClientSession | None = None
