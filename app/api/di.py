@@ -38,6 +38,7 @@ from app.domain.repos.room_membership import RoomMembershipRepository
 from app.domain.repos.user import UserRepository
 from app.domain.repos.user_session import UserSessionRepository
 from app.domain.repos.websocket_session import WebSocketSessionRepository
+from app.domain.services.analytics import AnalyticsService
 from app.domain.services.message import MessageService
 from app.domain.services.notification import NotificationService
 from app.domain.services.room import RoomService
@@ -173,7 +174,6 @@ def get_room_service(
     join_request_repo: JoinRequestRepository = Depends(get_join_request_repo),
     room_membership_repo: RoomMembershipRepository = Depends(get_room_membership_repo),
     outbox_repo: OutboxRepository = Depends(get_outbox_repo),
-    analytics_port: AnalyticsPort = Depends(get_analytics),
     transaction_manager: TransactionManager = Depends(get_transaction_manager),
 ) -> RoomService:
     return RoomService(
@@ -182,7 +182,6 @@ def get_room_service(
         join_request_repo=join_request_repo,
         room_membership_repo=room_membership_repo,
         outbox_repo=outbox_repo,
-        analytics_port=analytics_port,
         transaction_manager=transaction_manager,
     )
 
@@ -223,3 +222,9 @@ def get_websocket_service(
         connection_port=connection_port,
         transaction_manager=transaction_manager,
     )
+
+
+def get_analytics_service(
+    analytics_port: AnalyticsPort = Depends(get_analytics),
+) -> AnalyticsService:
+    return AnalyticsService(analytics_port=analytics_port)

@@ -1,10 +1,12 @@
 from fastapi import APIRouter
 
+from app.api.routes.analytics import router as analytics_router
 from app.api.routes.message import router as message_router
 from app.api.routes.notification import router as notification_router
 from app.api.routes.room import router as room_router
 from app.api.routes.status import router as status
 from app.api.routes.user import router as user_router
+from app.api.routes.websocket import router as websocket_router
 
 
 def get_main_router() -> APIRouter:
@@ -14,5 +16,7 @@ def get_main_router() -> APIRouter:
     router.include_router(notification_router)
     router.include_router(message_router)
     router.include_router(room_router)
+    router.include_router(analytics_router)
+    router.include_router(websocket_router)
 
     return router

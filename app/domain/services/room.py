@@ -36,7 +36,6 @@ from app.domain.exceptions.room import (
     RoomPermissionError,
 )
 from app.domain.exceptions.user import UserNotFound
-from app.domain.ports.analytics import AnalyticsPort
 from app.domain.ports.transaction_manager import TransactionManager
 from app.domain.repos.join_request import JoinRequestRepository
 from app.domain.repos.outbox import OutboxRepository
@@ -59,7 +58,6 @@ class RoomService:
         join_request_repo: JoinRequestRepository,
         room_membership_repo: RoomMembershipRepository,
         outbox_repo: OutboxRepository,
-        analytics_port: AnalyticsPort,
         transaction_manager: TransactionManager,
     ):
         self._room_repo = room_repo
@@ -67,7 +65,6 @@ class RoomService:
         self._join_repo = join_request_repo
         self._membership_repo = room_membership_repo
         self._outbox_repo = outbox_repo
-        self._analytics = analytics_port
         self._tm = transaction_manager
 
     async def create_room(self, room_data: RoomCreateDTO) -> RoomPublicDTO:

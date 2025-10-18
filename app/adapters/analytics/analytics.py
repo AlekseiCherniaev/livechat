@@ -114,5 +114,6 @@ class ClickHouseAnalyticsRepository:
         result = await self._client.query(query)
         if not result.result_rows:
             return 0
+
         row = next(result.named_results())
         return row["cnt"]  # type: ignore
