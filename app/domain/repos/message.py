@@ -9,7 +9,11 @@ class MessageRepository(Protocol):
     async def save(self, message: Message, db_session: Any | None = None) -> None: ...
 
     async def get_recent_by_room(
-        self, room_id: UUID, limit: int, db_session: Any | None = None
+        self,
+        room_id: UUID,
+        limit: int,
+        before: datetime | None,
+        db_session: Any | None = None,
     ) -> list[Message]: ...
 
     async def get_since_all_rooms(

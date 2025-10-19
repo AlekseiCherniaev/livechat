@@ -23,13 +23,19 @@ class CassandraMessageRepository:
         await asyncio.to_thread(_save)
 
     async def get_recent_by_room(
-        self, room_id: UUID, limit: int, db_session: Any | None = None
+        self,
+        room_id: UUID,
+        limit: int,
+        before: datetime | None,
+        db_session: Any | None = None,
     ) -> list[Message]:
         def _get() -> list[Message]:
-            return [
-                msg.to_entity()
-                for msg in MessageModel.objects(room_id=room_id).limit(limit)
-            ]
+            query = MessageModel.objects(room_id=room_id)
+            if before:
+                query = query.filter(created_at__lt=before)
+
+            query = query.limit(limit)
+            return [msg.to_entity() for msg in query]
 
         return await asyncio.to_thread(_get)
 

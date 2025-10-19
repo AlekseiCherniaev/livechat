@@ -177,11 +177,11 @@ class TestMessageService:
         ]
 
         result = await service.get_recent_messages(
-            room_id=room_id, user_id=user_id, limit=5
+            room_id=room_id, user_id=user_id, limit=5, before=None
         )
 
         message_repo.get_recent_by_room.assert_awaited_once_with(
-            room_id=room_id, limit=5
+            room_id=room_id, limit=5, before=None
         )
         assert len(result) == 1
         assert result[0].content == "hello"

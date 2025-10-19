@@ -1,4 +1,5 @@
 from dataclasses import asdict
+from datetime import datetime
 from uuid import UUID
 
 import structlog
@@ -71,6 +72,7 @@ async def delete_message(
 @router.get("/get-recent-messages/{room_id}")
 async def get_recent_messages(
     room_id: UUID,
+    before: datetime | None = Query(None),
     limit: int = Query(default=50, ge=1, le=200),
     current_user_id: UUID = Depends(get_current_user_id),
     message_service: MessageService = Depends(get_message_service),
@@ -79,7 +81,7 @@ async def get_recent_messages(
         "Fetching recent messages..."
     )
     messages = await message_service.get_recent_messages(
-        room_id=room_id, limit=limit, user_id=current_user_id
+        room_id=room_id, limit=limit, before=before, user_id=current_user_id
     )
     logger.bind(room_id=room_id, count=len(messages), user_id=current_user_id).debug(
         "Fetched recent messages"
