@@ -32,6 +32,9 @@ async def websocket_stream(
     current_session_id: UUID = Depends(get_current_session_id),
     ws_service: WebSocketService = Depends(get_websocket_service),
 ) -> None:
+    logger.bind(
+        user_id=current_user_id, room_id=room_id, session_id=current_session_id
+    ).debug("Connecting WebSocket")
     await websocket.accept()
     stop_event = asyncio.Event()
 
@@ -45,6 +48,9 @@ async def websocket_stream(
     )
 
     await ws_service.connect(session=session)
+    logger.bind(user_id=current_user_id, session_id=session.id).debug(
+        "WebSocket session registered"
+    )
 
     pubsub = redis.pubsub()
     user_rooms_key = f"ws:user:{current_user_id}:rooms"
@@ -53,6 +59,9 @@ async def websocket_stream(
         f"ws:room:{rid}" for rid in room_ids
     ]
     await pubsub.subscribe(*channels)
+    logger.bind(user_id=current_user_id, room_id=room_id, channels=channels).debug(
+        "Subscribed to Redis channels"
+    )
 
     async def ping_loop() -> None:
         while not stop_event.is_set():
@@ -62,9 +71,14 @@ async def websocket_stream(
                     session_id=session.id, user_id=current_user_id
                 )
             except (WebSocketSessionNotFound, WebSocketSessionPermissionError):
+                logger.bind(user_id=current_user_id, session_id=session.id).warning(
+                    "Ping failed, closing WebSocket"
+                )
                 stop_event.set()
             except Exception as e:
-                logger.warning("Ping update failed", error=str(e))
+                logger.bind(user_id=current_user_id, error=str(e)).warning(
+                    "Ping update failed"
+                )
                 await asyncio.sleep(5)
 
     async def listen_redis() -> None:
@@ -74,15 +88,23 @@ async def websocket_stream(
             )
             if message:
                 await websocket.send_text(message["data"].decode())
+                logger.bind(user_id=current_user_id).debug(
+                    "Sent message from Redis to client"
+                )
             await asyncio.sleep(0.01)
 
     try:
         await asyncio.gather(ping_loop(), listen_redis())
     except WebSocketDisconnect:
-        logger.bind(user_id=current_user_id).info("WebSocket disconnected by client")
+        logger.bind(user_id=current_user_id, session_id=session.id).info(
+            "WebSocket disconnected by client"
+        )
     finally:
         stop_event.set()
         await ws_service.disconnect(session_id=session.id, user_id=current_user_id)
+        logger.bind(user_id=current_user_id, session_id=session.id).debug(
+            "WebSocket session disconnected"
+        )
         with suppress(Exception):
             await pubsub.unsubscribe(*channels)
             await pubsub.close()
@@ -116,12 +138,18 @@ async def typing_indicator(
     current_user_id: UUID = Depends(get_current_user_id),
     ws_service: WebSocketService = Depends(get_websocket_service),
 ) -> Response:
+    logger.bind(
+        user_id=current_user_id, room_id=payload.room_id, is_typing=payload.is_typing
+    ).debug("Typing indicator")
     await ws_service.typing_indicator(
         room_id=payload.room_id,
         user_id=current_user_id,
         username=payload.username,
         is_typing=payload.is_typing,
     )
+    logger.bind(
+        user_id=current_user_id, room_id=payload.room_id, is_typing=payload.is_typing
+    ).debug("Typing indicator sent")
     return Response(status_code=status.HTTP_200_OK)
 
 
@@ -131,9 +159,16 @@ async def get_active_users_in_room(
     current_user_id: UUID = Depends(get_current_user_id),
     ws_service: WebSocketService = Depends(get_websocket_service),
 ) -> list[UUID]:
-    return await ws_service.active_users_in_room(
+    logger.bind(user_id=current_user_id, room_id=room_id).debug(
+        "Fetching active users in room"
+    )
+    users = await ws_service.active_users_in_room(
         room_id=room_id, user_id=current_user_id
     )
+    logger.bind(user_id=current_user_id, room_id=room_id, count=len(users)).debug(
+        "Fetched active users"
+    )
+    return users
 
 
 @router.post("/disconnect-user/{room_id}/{user_id}")
@@ -143,8 +178,14 @@ async def disconnect_user_from_room(
     current_user_id: UUID = Depends(get_current_user_id),
     ws_service: WebSocketService = Depends(get_websocket_service),
 ) -> Response:
+    logger.bind(user_id=current_user_id, target_user_id=user_id, room_id=room_id).debug(
+        "Disconnecting user from room"
+    )
     await ws_service.disconnect_user_from_room(
         user_id=user_id, room_id=room_id, created_by=current_user_id
+    )
+    logger.bind(user_id=current_user_id, target_user_id=user_id, room_id=room_id).debug(
+        "User disconnected from room"
     )
     return Response(status_code=status.HTTP_200_OK)
 
@@ -152,6 +193,12 @@ async def disconnect_user_from_room(
 @router.get("/get-user-is-online/{user_id}")
 async def is_user_online(
     user_id: UUID,
+    _: UUID = Depends(get_current_user_id),
     ws_service: WebSocketService = Depends(get_websocket_service),
 ) -> bool:
-    return await ws_service.is_user_online(user_id=user_id)
+    logger.bind(target_user_id=user_id).debug("Checking if user is online")
+    online = await ws_service.is_user_online(user_id=user_id)
+    logger.bind(target_user_id=user_id, online=online).debug(
+        "User online status fetched"
+    )
+    return online
