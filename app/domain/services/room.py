@@ -161,6 +161,9 @@ class RoomService:
 
         async def _txn(db_session: Any) -> None:
             await self._room_repo.delete_by_id(room_id=room_id, db_session=db_session)
+            await self._membership_repo.delete_by_room(
+                room_id=room_id, db_session=db_session
+            )
 
             await create_outbox_analytics_event(
                 outbox_repo=self._outbox_repo,
@@ -425,12 +428,44 @@ class RoomService:
             await self._membership_repo.delete(
                 room_id=room_id, user_id=user_id, db_session=db_session
             )
+            await self._room_repo.remove_participant(
+                room_id=room_id, db_session=db_session
+            )
+
+            logger.bind(room_id=room_id, user_id=user_id).info("User removed from room")
+
+            await create_outbox_analytics_event(
+                outbox_repo=self._outbox_repo,
+                event_type=AnalyticsEventType.USER_REMOVED_FROM_ROOM,
+                user_id=user_id,
+                room_id=room_id,
+                dedup_key=f"user_removed:{room_id}:{user_id}",
+                db_session=db_session,
+            )
+
+        await self._tm.run_in_transaction(_txn)
+
+    async def leave_room(self, room_id: UUID, user_id: UUID) -> None:
+        room = await self._room_repo.get_by_id(room_id=room_id)
+        if room is None:
+            raise RoomNotFound
+
+        exists = await self._membership_repo.exists(room_id=room_id, user_id=user_id)
+        if not exists:
+            return None
+
+        async def _txn(db_session: Any) -> None:
+            await self._membership_repo.delete(
+                room_id=room_id, user_id=user_id, db_session=db_session
+            )
 
             if user_id == room.created_by:
                 await self._room_repo.delete_by_id(
                     room_id=room_id, db_session=db_session
                 )
-                event_type = AnalyticsEventType.ROOM_DELETED
+                await self._membership_repo.delete_by_room(
+                    room_id=room_id, db_session=db_session
+                )
                 logger.bind(room_id=room_id, user_id=user_id).info(
                     "Room was deleted as creator left"
                 )
@@ -438,14 +473,13 @@ class RoomService:
                 await self._room_repo.remove_participant(
                     room_id=room_id, db_session=db_session
                 )
-                event_type = AnalyticsEventType.USER_LEFT_ROOM
                 logger.bind(room_id=room_id, user_id=user_id).info(
                     "User removed from room"
                 )
 
             await create_outbox_analytics_event(
                 outbox_repo=self._outbox_repo,
-                event_type=event_type,
+                event_type=AnalyticsEventType.USER_LEFT_ROOM,
                 user_id=user_id,
                 room_id=room_id,
                 dedup_key=f"user_left:{room_id}:{user_id}",
@@ -453,3 +487,4 @@ class RoomService:
             )
 
         await self._tm.run_in_transaction(_txn)
+        return None

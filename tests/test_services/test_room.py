@@ -250,20 +250,6 @@ class TestRoomService:
         with pytest.raises(RoomNotFound):
             await service.handle_join_request(req.id, accept=True, created_by=uuid4())
 
-    async def test_remove_participant_creator_deletes_room(
-        self, service, room_repo, membership_repo, tm, outbox_repo
-    ):
-        rid, uid = uuid4(), uuid4()
-        room = Room(id=rid, name="A", created_by=uid, is_public=True)
-        room_repo.get_by_id.return_value = room
-
-        await service.remove_participant(rid, uid, created_by=uid)
-
-        membership_repo.delete.assert_awaited_once()
-        room_repo.delete_by_id.assert_awaited_once()
-        outbox_repo.save.assert_awaited_once()
-        tm.run_in_transaction.assert_awaited_once()
-
     async def test_remove_participant_non_creator(
         self, service, room_repo, membership_repo, tm, outbox_repo
     ):

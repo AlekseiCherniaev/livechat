@@ -15,6 +15,10 @@ class RoomMembershipRepository(Protocol):
         self, room_id: UUID, user_id: UUID, db_session: Any | None = None
     ) -> None: ...
 
+    async def delete_by_room(
+        self, room_id: UUID, db_session: Any | None = None
+    ) -> None: ...
+
     async def list_users(
         self, room_id: UUID, db_session: Any | None = None
     ) -> list[User]: ...

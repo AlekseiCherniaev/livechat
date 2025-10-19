@@ -41,6 +41,11 @@ class MongoRoomMembershipRepository:
             {"room_id": str(room_id), "user_id": str(user_id)}, session=db_session
         )
 
+    async def delete_by_room(
+        self, room_id: UUID, db_session: Any | None = None
+    ) -> None:
+        await self._col.delete_many({"room_id": str(room_id)}, session=db_session)
+
     async def list_users(
         self, room_id: UUID, db_session: AsyncClientSession | None = None
     ) -> list[User]:
