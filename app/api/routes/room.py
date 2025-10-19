@@ -206,3 +206,15 @@ async def remove_participant(
         "Participant removed"
     )
     return Response(status_code=status.HTTP_200_OK)
+
+
+@router.delete("/leave-room/{room_id}")
+async def leave_room(
+    room_id: UUID,
+    current_user_id: UUID = Depends(get_current_user_id),
+    room_service: RoomService = Depends(get_room_service),
+) -> Response:
+    logger.bind(room_id=room_id, user_id=current_user_id).debug("Leaving room...")
+    await room_service.leave_room(room_id=room_id, user_id=current_user_id)
+    logger.bind(room_id=room_id, user_id=current_user_id).debug("Room left")
+    return Response(status_code=status.HTTP_200_OK)
