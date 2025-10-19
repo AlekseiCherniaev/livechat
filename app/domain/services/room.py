@@ -247,8 +247,11 @@ class RoomService:
         if user is None:
             raise UserNotFound
 
-        if room.created_by == user.id:
-            raise RoomPermissionError
+        exists = await self._membership_repo.exists(
+            room_id=join_request_data.room_id, user_id=user.id
+        )
+        if exists:
+            raise RoomPermissionError(message="You are already in this room")
 
         if room.is_public:
 

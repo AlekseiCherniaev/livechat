@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from uuid import UUID
 
 from app.domain.entities.message import Message
@@ -12,6 +13,7 @@ class MessagePublicDTO:
     content: str
     edited: bool
     id: UUID
+    created_at: datetime
 
 
 def message_to_dto(message: Message, username: str) -> MessagePublicDTO:
@@ -22,4 +24,5 @@ def message_to_dto(message: Message, username: str) -> MessagePublicDTO:
         content=message.content,
         edited=message.edited,
         id=message.id,
+        created_at=message.created_at,
     )

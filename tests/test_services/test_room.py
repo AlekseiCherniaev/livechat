@@ -181,7 +181,7 @@ class TestRoomService:
         user_repo.get_by_id.return_value = user
 
     async def test_request_join_private_room_duplicate(
-        self, service, room_repo, user_repo, join_repo
+        self, service, room_repo, user_repo, join_repo, membership_repo
     ):
         rid, uid = uuid4(), uuid4()
         room = Room(id=rid, name="Priv", is_public=False, created_by=uuid4())
@@ -189,6 +189,7 @@ class TestRoomService:
         room_repo.get_by_id.return_value = room
         user_repo.get_by_id.return_value = user
         join_repo.exists.return_value = True
+        membership_repo.exists.return_value = False
 
         dto = type("DTO", (), {"room_id": rid, "user_id": uid, "message": None})
         with pytest.raises(JoinRequestAlreadyExists):
