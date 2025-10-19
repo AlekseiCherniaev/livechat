@@ -15,6 +15,7 @@ class RedisSessionRepository:
     ):
         self._redis: Redis = redis
         self._ttl = ttl
+        self._sliding_threshold = 600
 
     @staticmethod
     def _session_key(session_id: UUID) -> str:
@@ -40,8 +41,16 @@ class RedisSessionRepository:
         raw = await self._redis.get(name=self._session_key(session_id))
         if not raw:
             return None
-        data = orjson.loads(raw)
-        return dict_to_session(dict_session=data)
+
+        session = dict_to_session(orjson.loads(raw))
+        ttl = await self._redis.ttl(self._session_key(session_id))
+        if ttl is not None and ttl < self._sliding_threshold:
+            await self._redis.expire(self._session_key(session_id), self._ttl)
+            await self._redis.expire(
+                self._user_sessions_key(session.user_id), self._ttl
+            )
+
+        return session
 
     async def delete_by_id(
         self, session_id: UUID, db_session: Any | None = None
