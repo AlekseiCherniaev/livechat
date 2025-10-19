@@ -1,7 +1,6 @@
 from typing import Protocol, Any
 from uuid import UUID
 
-from app.core.constants import JoinRequestStatus
 from app.domain.entities.join_request import JoinRequest
 from app.domain.entities.room import Room
 from app.domain.entities.user import User
@@ -21,11 +20,11 @@ class JoinRequestRepository(Protocol):
     ) -> None: ...
 
     async def list_by_room(
-        self, room_id: UUID, status: JoinRequestStatus, db_session: Any | None = None
+        self, room_id: UUID, db_session: Any | None = None
     ) -> list[tuple[JoinRequest, User, Room]]: ...
 
     async def list_by_user(
-        self, user_id: UUID, status: JoinRequestStatus, db_session: Any | None = None
+        self, user_id: UUID, db_session: Any | None = None
     ) -> list[tuple[JoinRequest, User, Room]]: ...
 
     async def exists(

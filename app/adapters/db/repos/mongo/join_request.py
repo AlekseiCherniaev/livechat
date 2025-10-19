@@ -10,7 +10,6 @@ from app.adapters.db.models.mongo.join_request import (
 )
 from app.adapters.db.models.mongo.room import document_to_room
 from app.adapters.db.models.mongo.user import document_to_user
-from app.core.constants import JoinRequestStatus
 from app.domain.entities.join_request import JoinRequest
 from app.domain.entities.room import Room
 from app.domain.entities.user import User
@@ -45,11 +44,10 @@ class MongoJoinRequestRepository:
     async def list_by_room(
         self,
         room_id: UUID,
-        status: JoinRequestStatus,
         db_session: AsyncClientSession | None = None,
     ) -> list[tuple[JoinRequest, User, Room]]:
         pipeline: Sequence[Mapping[str, Any]] = [
-            {"$match": {"room_id": str(room_id), "status": status.value}},
+            {"$match": {"room_id": str(room_id)}},
             {
                 "$lookup": {
                     "from": "users",
@@ -84,11 +82,10 @@ class MongoJoinRequestRepository:
     async def list_by_user(
         self,
         user_id: UUID,
-        status: JoinRequestStatus,
         db_session: AsyncClientSession | None = None,
     ) -> list[tuple[JoinRequest, User, Room]]:
         pipeline: Sequence[Mapping[str, Any]] = [
-            {"$match": {"user_id": str(user_id), "status": status.value}},
+            {"$match": {"user_id": str(user_id)}},
             {
                 "$lookup": {
                     "from": "users",

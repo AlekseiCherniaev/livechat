@@ -3,7 +3,6 @@ from uuid import uuid4
 import pytest
 from pytest_asyncio import fixture
 
-from app.core.constants import JoinRequestStatus
 from app.domain.dtos.join_request import JoinRequestCreateDTO
 from app.domain.dtos.room import RoomCreateDTO, RoomUpdateDTO
 from app.domain.entities.join_request import JoinRequest
@@ -216,9 +215,7 @@ class TestRoomService:
         self, service, join_repo, room_repo, tm, outbox_repo
     ):
         rid, uid = uuid4(), uuid4()
-        req = JoinRequest(
-            id=uuid4(), room_id=rid, user_id=uid, status=JoinRequestStatus.PENDING
-        )
+        req = JoinRequest(id=uuid4(), room_id=rid, user_id=uid)
         created_by = uuid4()
         join_repo.get_by_id.return_value = req
         room_repo.get_by_id.return_value = Room(
@@ -227,14 +224,14 @@ class TestRoomService:
 
         await service.handle_join_request(req.id, accept=True, created_by=created_by)
 
-        join_repo.save.assert_awaited_once()
+        join_repo.delete_by_id.assert_awaited_once()
         outbox_repo.save.assert_awaited()
         tm.run_in_transaction.assert_awaited_once()
 
     async def test_handle_join_request_not_found(self, service, join_repo):
         join_repo.get_by_id.return_value = None
         with pytest.raises(Exception):
-            await service.handle_join_request(uuid4(), True)
+            await service.handle_join_request(uuid4(), uuid4(), accept=True)
 
     async def test_handle_join_request_room_not_found(
         self, service, join_repo, room_repo
@@ -243,7 +240,6 @@ class TestRoomService:
             id=uuid4(),
             room_id=uuid4(),
             user_id=uuid4(),
-            status=JoinRequestStatus.PENDING,
         )
         join_repo.get_by_id.return_value = req
         room_repo.get_by_id.return_value = None

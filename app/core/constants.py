@@ -47,12 +47,6 @@ class RoomRole(Enum):
     MEMBER = "MEMBER"
 
 
-class JoinRequestStatus(Enum):
-    PENDING = "PENDING"
-    ACCEPTED = "ACCEPTED"
-    REJECTED = "REJECTED"
-
-
 class OutboxMessageType(Enum):
     ANALYTICS = "ANALYTICS"
     NOTIFICATION = "NOTIFICATION"

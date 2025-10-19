@@ -5,7 +5,6 @@ from uuid import UUID
 import structlog
 
 from app.core.constants import (
-    JoinRequestStatus,
     NotificationType,
     AnalyticsEventType,
     RoomRole,
@@ -28,7 +27,6 @@ from app.domain.entities.room_membership import RoomMembership
 from app.domain.exceptions.join_request import (
     JoinRequestNotFound,
     JoinRequestAlreadyExists,
-    JoinRequestAlreadyHandled,
 )
 from app.domain.exceptions.room import (
     RoomAlreadyExists,
@@ -212,9 +210,7 @@ class RoomService:
         if room.created_by != created_by:
             raise RoomPermissionError
 
-        join_requests = await self._join_repo.list_by_room(
-            room_id=room_id, status=JoinRequestStatus.PENDING
-        )
+        join_requests = await self._join_repo.list_by_room(room_id=room_id)
 
         return [
             join_request_to_dto(
@@ -226,9 +222,7 @@ class RoomService:
     async def list_user_join_requests(
         self, user_id: UUID
     ) -> list[JoinRequestPublicDTO]:
-        join_requests = await self._join_repo.list_by_user(
-            user_id=user_id, status=JoinRequestStatus.PENDING
-        )
+        join_requests = await self._join_repo.list_by_user(user_id=user_id)
 
         return [
             join_request_to_dto(
@@ -293,7 +287,6 @@ class RoomService:
             request = JoinRequest(
                 room_id=room.id,
                 user_id=join_request_data.user_id,
-                status=JoinRequestStatus.PENDING,
                 message=join_request_data.message,
             )
             await self._join_repo.save(request=request, db_session=db_session)
@@ -332,9 +325,6 @@ class RoomService:
         if not request:
             raise JoinRequestNotFound
 
-        if request.status != JoinRequestStatus.PENDING:
-            raise JoinRequestAlreadyHandled
-
         room = await self._room_repo.get_by_id(room_id=request.room_id)
         if room is None:
             raise RoomNotFound
@@ -349,17 +339,15 @@ class RoomService:
                     user_id=request.user_id,
                     db_session=db_session,
                 )
-                request.status = JoinRequestStatus.ACCEPTED
                 notif_type = NotificationType.JOIN_REQUEST_ACCEPTED
                 event_type = AnalyticsEventType.JOIN_REQUEST_ACCEPTED
             else:
-                request.status = JoinRequestStatus.REJECTED
                 notif_type = NotificationType.JOIN_REQUEST_REJECTED
                 event_type = AnalyticsEventType.JOIN_REQUEST_REJECTED
 
-            request.updated_at = datetime.now(timezone.utc)
-            request.handled_by = room.created_by
-            await self._join_repo.save(request=request, db_session=db_session)
+            await self._join_repo.delete_by_id(
+                request_id=request_id, db_session=db_session
+            )
 
             await create_outbox_notification_event(
                 outbox_repo=self._outbox_repo,
@@ -381,9 +369,7 @@ class RoomService:
                 db_session=db_session,
             )
 
-            logger.bind(request_id=request_id, status=request.status).info(
-                "Join request handled"
-            )
+            logger.bind(request_id=request_id).info("Join request handled")
 
         await self._tm.run_in_transaction(_txn)
 
