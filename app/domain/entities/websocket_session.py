@@ -7,7 +7,6 @@ from uuid import UUID, uuid4
 class WebSocketSession:
     user_id: UUID
     room_id: UUID
-    session_id: UUID
     connected_at: datetime
     last_ping_at: datetime
     ip_address: str

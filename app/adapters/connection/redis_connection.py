@@ -62,7 +62,3 @@ class RedisConnectionPort:
         room_key = f"ws:room:{room_id}:users"
         user_ids = await self._redis.smembers(room_key)  # type: ignore[misc]
         return [UUID(uid) for uid in user_ids]
-
-    async def is_user_online(self, user_id: UUID) -> bool:
-        user_rooms_key = f"ws:user:{user_id}:rooms"
-        return await self._redis.scard(user_rooms_key) > 0  # type: ignore

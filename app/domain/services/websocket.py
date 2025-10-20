@@ -46,9 +46,6 @@ class WebSocketService:
 
     async def connect(self, session: WebSocketSession) -> None:
         async def _txn(db_session: Any) -> None:
-            await self._user_repo.update_last_active(
-                user_id=session.user_id, db_session=db_session
-            )
             await self._ws_session_repo.save(session=session, db_session=db_session)
 
             await create_outbox_analytics_event(
@@ -77,9 +74,6 @@ class WebSocketService:
             raise WebSocketSessionPermissionError
 
         async def _txn(db_session: Any) -> None:
-            await self._user_repo.update_last_active(
-                user_id=session.user_id, db_session=db_session
-            )
             await self._ws_session_repo.delete_by_id(
                 session_id=session_id, db_session=db_session
             )
@@ -183,6 +177,3 @@ class WebSocketService:
 
         await self._tm.run_in_transaction(_txn)
         await self._conn.disconnect_user_from_room(user_id=user_id, room_id=room_id)
-
-    async def is_user_online(self, user_id: UUID) -> bool:
-        return await self._conn.is_user_online(user_id=user_id)

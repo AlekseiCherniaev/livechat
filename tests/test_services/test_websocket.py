@@ -16,7 +16,6 @@ def make_session() -> WebSocketSession:
     return WebSocketSession(
         user_id=uuid4(),
         room_id=uuid4(),
-        session_id=uuid4(),
         connected_at=now,
         last_ping_at=now,
         ip_address="127.0.0.1",
@@ -57,9 +56,6 @@ class TestWebSocketService:
             await service.connect(session)
 
         tm.run_in_transaction.assert_awaited()
-        user_repo.update_last_active.assert_awaited_with(
-            user_id=session.user_id, db_session=ANY
-        )
         ws_session_repo.save.assert_awaited_with(session=session, db_session=ANY)
         create_event.assert_awaited_with(
             outbox_repo=outbox_repo,
@@ -86,9 +82,6 @@ class TestWebSocketService:
             await service.disconnect(session_id=session.id, user_id=session.user_id)
 
         ws_session_repo.get_by_id.assert_awaited_with(session_id=session.id)
-        user_repo.update_last_active.assert_awaited_with(
-            user_id=session.user_id, db_session=ANY
-        )
         ws_session_repo.delete_by_id.assert_awaited_with(
             session_id=session.id, db_session=ANY
         )

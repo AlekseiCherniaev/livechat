@@ -137,7 +137,7 @@ class UserService:
 
         await self._tm.run_in_transaction(_txn)
 
-    async def get_user_by_session(self, session_id: str | None) -> UserPublicDTO:
+    async def _validate_session(self, session_id: str | None) -> UserSession:
         if not session_id:
             raise SessionNotFound
 
@@ -149,6 +149,13 @@ class UserService:
         session = await self._session_repo.get_by_id(session_id=session_uuid)
         if not session:
             raise SessionNotFound
+
+        return session
+
+    async def get_user_by_session(self, session_id: str | None) -> UserPublicDTO:
+        session = await self._validate_session(session_id=session_id)
+
+        await self._user_repo.update_last_active(user_id=session.user_id)
 
         user = await self._user_repo.get_by_id(user_id=session.user_id)
         if not user:
@@ -158,31 +165,8 @@ class UserService:
         return user_to_dto(user=user)
 
     async def get_user_id_by_session(self, session_id: str | None) -> UUID:
-        if not session_id:
-            raise SessionNotFound
+        session = await self._validate_session(session_id=session_id)
 
-        try:
-            session_uuid = UUID(session_id)
-        except ValueError:
-            raise InvalidSession
-
-        session = await self._session_repo.get_by_id(session_id=session_uuid)
-        if not session:
-            raise SessionNotFound
+        await self._user_repo.update_last_active(user_id=session.user_id)
 
         return session.user_id
-
-    async def get_valid_session_id(self, session_id: str | None) -> UUID:
-        if not session_id:
-            raise SessionNotFound
-
-        try:
-            session_uuid = UUID(session_id)
-        except ValueError:
-            raise InvalidSession
-
-        session = await self._session_repo.get_by_id(session_id=session_uuid)
-        if not session:
-            raise SessionNotFound
-
-        return session.id
