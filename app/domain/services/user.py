@@ -14,6 +14,7 @@ from app.domain.exceptions.user import (
     UserNotFound,
 )
 from app.domain.exceptions.user_session import SessionNotFound, InvalidSession
+from app.domain.ports.connection import ConnectionPort
 from app.domain.ports.password_hasher import PasswordHasherPort
 from app.domain.ports.transaction_manager import TransactionManager
 from app.domain.repos.outbox import OutboxRepository
@@ -33,6 +34,7 @@ class UserService:
         ws_session_repo: WebSocketSessionRepository,
         outbox_repo: OutboxRepository,
         password_hasher_port: PasswordHasherPort,
+        connection_port: ConnectionPort,
         transaction_manager: TransactionManager,
     ) -> None:
         self._user_repo = user_repo
@@ -40,6 +42,7 @@ class UserService:
         self._ws_session_repo = ws_session_repo
         self._outbox_repo = outbox_repo
         self._password_hasher = password_hasher_port
+        self._conn = connection_port
         self._tm = transaction_manager
 
     async def register_user(self, user_data: UserAuthDTO) -> None:
@@ -58,7 +61,6 @@ class UserService:
                 dedup_key=f"user_register:{user.id}",
                 db_session=db_session,
             )
-
             logger.bind(username=user.username).debug("Saved user in repo")
 
         await self._tm.run_in_transaction(_txn)
@@ -71,14 +73,9 @@ class UserService:
             raise UserInvalidCredentials
 
         async def _txn(db_session: Any) -> UUID:
-            user.last_login_at = datetime.now(timezone.utc)
-            user.last_active = datetime.now(timezone.utc)
-            await self._user_repo.save(user=user, db_session=db_session)
-
             session = UserSession(
                 user_id=user.id, connected_at=datetime.now(timezone.utc)
             )
-
             await self._session_repo.save(session=session, db_session=db_session)
             # in case Mongo commit fails after this step, a session may remain in Redis,
             # but it will expire automatically (TTL) and is never returned to the user
@@ -90,52 +87,13 @@ class UserService:
                 dedup_key=f"user_login:{user.id}:{session.connected_at.timestamp()}",
                 db_session=db_session,
             )
-
             logger.bind(session_id=session.id).debug(
                 "Saved session and updated user in repo"
             )
-
             return session.id
 
         session_id: UUID = await self._tm.run_in_transaction(_txn)
-
         return session_id
-
-    async def logout_user(self, session_id: str | None) -> None:
-        if not session_id:
-            raise SessionNotFound
-
-        try:
-            session_uuid = UUID(session_id)
-        except ValueError:
-            raise InvalidSession
-
-        session = await self._session_repo.get_by_id(session_id=session_uuid)
-        if not session:
-            raise SessionNotFound
-
-        async def _txn(db_session: Any) -> None:
-            await self._user_repo.update_last_active(
-                user_id=session.user_id, db_session=db_session
-            )
-            await self._session_repo.delete_by_id(
-                session_id=session_uuid, db_session=db_session
-            )
-            await self._ws_session_repo.delete_by_user_id(
-                user_id=session.user_id, db_session=db_session
-            )
-
-            await create_outbox_analytics_event(
-                outbox_repo=self._outbox_repo,
-                event_type=AnalyticsEventType.USER_LOGGED_OUT,
-                user_id=session.user_id,
-                dedup_key=f"user_logout:{session.user_id}:{session.id}",
-                db_session=db_session,
-            )
-
-            logger.bind(session_id=session_uuid).debug("Deleted session in repo")
-
-        await self._tm.run_in_transaction(_txn)
 
     async def _validate_session(self, session_id: str | None) -> UserSession:
         if not session_id:
@@ -152,15 +110,42 @@ class UserService:
 
         return session
 
-    async def get_user_by_session(self, session_id: str | None) -> UserPublicDTO:
+    async def logout_user(self, session_id: str | None) -> None:
         session = await self._validate_session(session_id=session_id)
 
-        await self._user_repo.update_last_active(user_id=session.user_id)
+        async def _txn(db_session: Any) -> None:
+            await self._user_repo.update_last_active(
+                user_id=session.user_id, db_session=db_session
+            )
+            await self._session_repo.delete_by_id(
+                session_id=session.id, db_session=db_session
+            )
+            await self._ws_session_repo.delete_by_user_id(
+                user_id=session.user_id, db_session=db_session
+            )
+
+            await create_outbox_analytics_event(
+                outbox_repo=self._outbox_repo,
+                event_type=AnalyticsEventType.USER_LOGGED_OUT,
+                user_id=session.user_id,
+                dedup_key=f"user_logout:{session.user_id}:{session.id}",
+                db_session=db_session,
+            )
+
+            logger.bind(session_id=session.id).debug("Deleted session in repo")
+
+        await self._tm.run_in_transaction(_txn)
+
+        await self._conn.disconnect_user(user_id=session.user_id)
+
+    async def get_user_by_session(self, session_id: str | None) -> UserPublicDTO:
+        session = await self._validate_session(session_id=session_id)
 
         user = await self._user_repo.get_by_id(user_id=session.user_id)
         if not user:
             raise UserNotFound
 
+        await self._user_repo.update_last_active(user_id=session.user_id)
         logger.bind(user_id=user.id).debug("Retrieved user from repo")
         return user_to_dto(user=user)
 
@@ -168,5 +153,4 @@ class UserService:
         session = await self._validate_session(session_id=session_id)
 
         await self._user_repo.update_last_active(user_id=session.user_id)
-
         return session.user_id

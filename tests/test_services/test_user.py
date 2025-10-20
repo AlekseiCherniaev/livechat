@@ -25,6 +25,7 @@ class TestUserService:
         ws_session_repo,
         outbox_repo,
         password_hasher,
+        connection_port,
         tm,
     ):
         return UserService(
@@ -33,6 +34,7 @@ class TestUserService:
             ws_session_repo=ws_session_repo,
             outbox_repo=outbox_repo,
             password_hasher_port=password_hasher,
+            connection_port=connection_port,
             transaction_manager=tm,
         )
 

@@ -8,7 +8,6 @@ from uuid import UUID, uuid4
 class User:
     username: str
     hashed_password: str
-    last_login_at: datetime | None = None
     last_active: datetime | None = None
     created_at: datetime = field(default_factory=partial(datetime.now, timezone.utc))
     updated_at: datetime = field(default_factory=partial(datetime.now, timezone.utc))

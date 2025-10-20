@@ -14,7 +14,6 @@ class UserAuthDTO:
 @dataclass
 class UserPublicDTO:
     username: str
-    last_login_at: datetime | None
     last_active: datetime | None
     created_at: datetime
     updated_at: datetime
@@ -24,7 +23,6 @@ class UserPublicDTO:
 def user_to_dto(user: User) -> UserPublicDTO:
     return UserPublicDTO(
         username=user.username,
-        last_login_at=user.last_login_at,
         last_active=user.last_active,
         created_at=user.created_at,
         updated_at=user.updated_at,
