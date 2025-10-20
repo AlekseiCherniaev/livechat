@@ -38,6 +38,16 @@ async def get_websocket_room_id(websocket: WebSocket) -> UUID:
         raise ValueError("Invalid room_id")
 
 
+async def get_websocket_user_id(websocket: WebSocket) -> UUID:
+    room_id_str = websocket.query_params.get("user_id")
+    if not room_id_str:
+        raise ValueError("room_id is required")
+    try:
+        return UUID(room_id_str)
+    except ValueError:
+        raise ValueError("Invalid room_id")
+
+
 async def get_current_user(
     request: Request, user_service: UserService = Depends(get_user_service)
 ) -> UserPublic:
