@@ -203,16 +203,6 @@ class TestRoomService:
                 JoinRequestCreateDTO(room_id=uuid4(), user_id=uuid4(), message=None)
             )
 
-    async def test_request_join_user_not_found(self, service, room_repo, user_repo):
-        room_repo.get_by_id.return_value = Room(
-            id=uuid4(), name="x", is_public=False, created_by=uuid4()
-        )
-        user_repo.get_by_id.return_value = None
-        with pytest.raises(UserNotFound):
-            await service.request_join(
-                JoinRequestCreateDTO(room_id=uuid4(), user_id=uuid4(), message=None)
-            )
-
     async def test_handle_join_request_accept(
         self, service, join_repo, room_repo, tm, outbox_repo
     ):

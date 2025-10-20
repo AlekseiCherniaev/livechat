@@ -242,12 +242,8 @@ class RoomService:
         if not room:
             raise RoomNotFound
 
-        user = await self._user_repo.get_by_id(user_id=join_request_data.user_id)
-        if user is None:
-            raise UserNotFound
-
         if await self._membership_repo.exists(
-            room_id=join_request_data.room_id, user_id=user.id
+            room_id=join_request_data.room_id, user_id=join_request_data.user_id
         ):
             raise RoomPermissionError(message="You are already in this room")
 
@@ -266,7 +262,7 @@ class RoomService:
                     event_type=AnalyticsEventType.USER_JOINED_ROOM,
                     user_id=join_request_data.user_id,
                     room_id=room.id,
-                    payload={"room_name": room.name, "username": user.username},
+                    payload={"room_name": room.name},
                     dedup_key=f"user_join:{room.id}:{join_request_data.user_id}",
                     db_session=db_session,
                 )
@@ -277,8 +273,10 @@ class RoomService:
             await self._tm.run_in_transaction(_txn)
 
             event = EventPayload(
-                user_id=join_request_data.user_id,
-                username=user.username,
+                payload={
+                    "user_id": str(join_request_data.user_id),
+                    "room_id": str(join_request_data.room_id),
+                },
                 timestamp=datetime.now(timezone.utc).isoformat(),
             )
             await self._conn.broadcast_event(
@@ -307,7 +305,7 @@ class RoomService:
                 notification_type=NotificationType.JOIN_REQUEST_CREATED,
                 user_id=room.created_by,
                 source_id=join_request_data.user_id,
-                payload={"room_name": room.name, "username": user.username},
+                payload={"room_name": room.name},
                 dedup_key=f"notif_joinreq:{room.id}:{join_request_data.user_id}",
                 db_session=db_session,
             )
@@ -317,7 +315,7 @@ class RoomService:
                 event_type=AnalyticsEventType.JOIN_REQUEST_CREATED,
                 user_id=join_request_data.user_id,
                 room_id=room.id,
-                payload={"room_name": room.name, "username": user.username},
+                payload={"room_name": room.name},
                 dedup_key=f"joinreq_created:{room.id}:{join_request_data.user_id}",
                 db_session=db_session,
             )
@@ -335,10 +333,6 @@ class RoomService:
         request = await self._join_repo.get_by_id(request_id=request_id)
         if not request:
             raise JoinRequestNotFound
-
-        user = await self._user_repo.get_by_id(user_id=request.user_id)
-        if not user:
-            raise UserNotFound
 
         room = await self._check_permissions(
             user_id=created_by, room_id=request.room_id
@@ -388,8 +382,10 @@ class RoomService:
 
         if accept:
             event = EventPayload(
-                user_id=request.user_id,
-                username=user.username,
+                payload={
+                    "user_id": str(request.user_id),
+                    "room_id": str(request.room_id),
+                },
                 timestamp=datetime.now(timezone.utc).isoformat(),
             )
             await self._conn.broadcast_event(
@@ -430,10 +426,6 @@ class RoomService:
     ) -> None:
         await self._check_permissions(user_id=created_by, room_id=room_id)
 
-        user = await self._user_repo.get_by_id(user_id=user_id)
-        if not user:
-            raise UserNotFound
-
         async def _txn(db_session: Any) -> None:
             await self._membership_repo.delete(
                 room_id=room_id, user_id=user_id, db_session=db_session
@@ -458,8 +450,7 @@ class RoomService:
         await self._tm.run_in_transaction(_txn)
 
         event = EventPayload(
-            user_id=user_id,
-            username=user.username,
+            payload={"user_id": str(user_id), "room_id": str(room_id)},
             timestamp=datetime.now(timezone.utc).isoformat(),
         )
         await self._conn.broadcast_event(
@@ -477,10 +468,6 @@ class RoomService:
         exists = await self._membership_repo.exists(room_id=room_id, user_id=user_id)
         if not exists:
             return None
-
-        user = await self._user_repo.get_by_id(user_id=user_id)
-        if not user:
-            raise UserNotFound
 
         async def _txn(db_session: Any) -> None:
             await self._membership_repo.delete(
@@ -517,8 +504,7 @@ class RoomService:
         await self._tm.run_in_transaction(_txn)
 
         event = EventPayload(
-            user_id=user_id,
-            username=user.username,
+            payload={"user_id": str(user_id), "room_id": str(room_id)},
             timestamp=datetime.now(timezone.utc).isoformat(),
         )
         await self._conn.broadcast_event(

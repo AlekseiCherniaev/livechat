@@ -49,11 +49,17 @@ class WebSocketService:
         self._tm = transaction_manager
 
     async def connect_to_room(self, session: WebSocketSession) -> list[str]:
-        user = await self._user_repo.get_by_id(user_id=session.user_id)
-        if not user:
-            raise UserNotFound
+        existing_sessions = await self._ws_session_repo.list_by_user_id(
+            user_id=session.user_id
+        )
 
         async def _txn(db_session: Any) -> None:
+            for existing_session in existing_sessions:
+                if existing_session.id != session.id:
+                    await self._ws_session_repo.delete_by_id(
+                        session_id=existing_session.id, db_session=db_session
+                    )
+
             await self._ws_session_repo.save(session=session, db_session=db_session)
 
             await create_outbox_analytics_event(
@@ -68,20 +74,29 @@ class WebSocketService:
 
         await self._tm.run_in_transaction(_txn)
 
+        for existing_session in existing_sessions:
+            if existing_session.room_id != session.room_id:
+                await self._conn.disconnect_user_from_room(
+                    user_id=session.user_id, room_id=existing_session.room_id
+                )
+                event = EventPayload(
+                    payload={
+                        "user_id": str(session.user_id),
+                        "room_id": str(existing_session.room_id),
+                    },
+                    timestamp=datetime.now(timezone.utc).isoformat(),
+                )
+                await self._conn.broadcast_event(
+                    room_id=existing_session.room_id,
+                    event_type=BroadcastEventType.ROOM_USER_OFFLINE,
+                    event_payload=event,
+                )
+
         await self._conn.connect_user_to_room(
             user_id=session.user_id, room_id=session.room_id
         )
-
-        user_connections = await self._conn.get_user_connections(
-            user_id=session.user_id
-        )
-        channels = [f"ws:user:{session.user_id}"] + [
-            f"ws:room:{rid}" for rid in user_connections
-        ]
-
         event = EventPayload(
-            user_id=session.user_id,
-            username=user.username,
+            payload={"user_id": str(session.user_id), "room_id": str(session.room_id)},
             timestamp=datetime.now(timezone.utc).isoformat(),
         )
         await self._conn.broadcast_event(
@@ -89,7 +104,7 @@ class WebSocketService:
             event_type=BroadcastEventType.ROOM_USER_ONLINE,
             event_payload=event,
         )
-        return channels
+        return [f"ws:user:{session.user_id}", f"ws:room:{session.room_id}"]
 
     async def disconnect_from_room(self, session_id: UUID, user_id: UUID) -> None:
         session = await self._ws_session_repo.get_by_id(session_id=session_id)
@@ -99,10 +114,6 @@ class WebSocketService:
 
         if session.user_id != user_id:
             raise WebSocketSessionPermissionError
-
-        user = await self._user_repo.get_by_id(user_id=session.user_id)
-        if not user:
-            raise UserNotFound
 
         async def _txn(db_session: Any) -> None:
             await self._ws_session_repo.delete_by_id(
@@ -126,8 +137,7 @@ class WebSocketService:
             user_id=session.user_id, room_id=session.room_id
         )
         event = EventPayload(
-            user_id=session.user_id,
-            username=user.username,
+            payload={"user_id": str(session.user_id), "room_id": str(session.room_id)},
             timestamp=datetime.now(timezone.utc).isoformat(),
         )
         await self._conn.broadcast_event(
@@ -149,11 +159,12 @@ class WebSocketService:
         if user.username != username:
             raise WebSocketSessionPermissionError
 
-        payload = {"is_typing": is_typing}
         event = EventPayload(
-            user_id=user_id,
-            username=username,
-            payload=payload,
+            payload={
+                "user_id": str(user_id),
+                "is_typing": str(is_typing),
+                "room_id": str(room_id),
+            },
             timestamp=datetime.now(timezone.utc).isoformat(),
         )
         await self._conn.broadcast_event(
@@ -198,10 +209,6 @@ class WebSocketService:
 
         if room.created_by != created_by:
             raise WebSocketSessionPermissionError
-
-        user = await self._user_repo.get_by_id(user_id=user_id)
-        if not user:
-            raise UserNotFound
 
         async def _txn(db_session: Any) -> None:
             sessions = await self._ws_session_repo.list_by_user_id(

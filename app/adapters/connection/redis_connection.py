@@ -52,11 +52,8 @@ class RedisConnectionPort:
         channel = f"ws:room:{room_id}"
         message = {
             "event_type": event_type.value,
-            "payload": {
-                "user_id": str(event_payload.user_id),
-                "username": event_payload.username,
-                "payload": event_payload.payload,
-            },
+            "payload": event_payload.payload,
+            "timestamp": event_payload.timestamp,
         }
         await self._redis.publish(channel, orjson.dumps(message))
 
@@ -67,6 +64,7 @@ class RedisConnectionPort:
         message = {
             "event_type": event_type.value,
             "payload": event_payload.payload,
+            "timestamp": event_payload.timestamp,
         }
         await self._redis.publish(channel, orjson.dumps(message))
 

@@ -93,11 +93,11 @@ class MessageService:
         message_create: Message = await self._tm.run_in_transaction(_txn)
 
         event = EventPayload(
-            user_id=user_id,
-            username=user.username,
             payload={
                 "message": message_create.content,
                 "message_id": str(message_create.id),
+                "user_id": str(user_id),
+                "username": user.username,
             },
             timestamp=datetime.now(timezone.utc).isoformat(),
         )
@@ -141,11 +141,11 @@ class MessageService:
         message_update = await self._tm.run_in_transaction(_txn)
 
         event = EventPayload(
-            user_id=user_id,
-            username=user.username,
             payload={
                 "message": message_update.content,
                 "message_id": str(message_update.id),
+                "user_id": str(user_id),
+                "username": user.username,
             },
             timestamp=datetime.now(timezone.utc).isoformat(),
         )
@@ -185,9 +185,11 @@ class MessageService:
         await self._tm.run_in_transaction(_txn)
 
         event = EventPayload(
-            user_id=user_id,
-            username=user.username,
-            payload={"message_id": str(message_id)},
+            payload={
+                "message_id": str(message_id),
+                "user_id": str(user_id),
+                "username": user.username,
+            },
             timestamp=datetime.now(timezone.utc).isoformat(),
         )
         await self._conn.broadcast_event(

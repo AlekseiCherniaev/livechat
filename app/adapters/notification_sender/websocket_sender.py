@@ -11,13 +11,13 @@ class WebSocketNotificationSender:
         self._conn = connection_port
 
     async def send(self, notification: Notification) -> None:
+        payload = {
+            "notification_type": notification.type.value,
+            "user_id": str(notification.user_id),
+        }
+        payload.update(notification.payload)
         event = EventPayload(
-            user_id=notification.user_id,
-            username="Undefined",  # no need
-            payload={
-                "notification_type": notification.type.value,
-                "payload": notification.payload,
-            },
+            payload=payload,
             timestamp=datetime.now(timezone.utc).isoformat(),
         )
         await self._conn.send_event_to_user(
