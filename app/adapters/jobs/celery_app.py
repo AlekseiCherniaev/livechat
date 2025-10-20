@@ -158,18 +158,20 @@ async def process_outbox() -> None:
 
             pending = await outbox_repo.list_pending(limit=100)
             for outbox in pending:
-                task_logger = logger.bind(
-                    outbox_id=str(outbox.id), type=outbox.type.value
-                )
+                task_logger = logger.bind(outbox_id=outbox.id, type=outbox.type.value)
                 await outbox_repo.mark_in_progress(outbox_id=outbox.id)
                 try:
+                    payload = outbox.payload
+                    logger.bind(outbox_id=str(outbox.id), payload=payload).debug(
+                        "Processing outbox with given payload"
+                    )
                     if outbox.type == OutboxMessageType.NOTIFICATION:
-                        payload = outbox.payload
                         notification = Notification(
                             user_id=UUID(payload.get("user_id")),
                             payload=payload.get("payload", {}),
                             read=payload.get("read", False),
-                            source_id=UUID(payload.get("source_id")),
+                            source_id=payload.get("source_id")
+                            and UUID(payload.get("source_id")),
                             id=UUID(payload.get("id")),
                             type=NotificationType(payload.get("type")),
                         )
@@ -178,11 +180,12 @@ async def process_outbox() -> None:
                         task_logger.info("Notification sent successfully")
 
                     elif outbox.type == OutboxMessageType.ANALYTICS:
-                        payload = outbox.payload
                         event = AnalyticsEvent(
                             event_type=AnalyticsEventType(payload.get("event_type")),
-                            user_id=UUID(payload.get("user_id")),
-                            room_id=UUID(payload.get("room_id")),
+                            user_id=payload.get("user_id")
+                            and UUID(payload.get("user_id")),
+                            room_id=payload.get("room_id")
+                            and UUID(payload.get("room_id")),
                             payload=payload.get("payload"),
                             id=UUID(payload.get("id")),
                         )
@@ -196,12 +199,14 @@ async def process_outbox() -> None:
                 except Exception as e:
                     if outbox.retries + 1 >= outbox.max_retries:
                         await outbox_repo.mark_failed(outbox_id=outbox.id, error=str(e))
-                        task_logger.error("Outbox item failed permanently")
+                        task_logger.bind(e=str(e)).error(
+                            "Outbox item failed permanently"
+                        )
                     else:
                         await outbox_repo.mark_in_progress(
                             outbox_id=outbox.id, retry=True
                         )
-                        task_logger.warning("Outbox item will retry")
+                        task_logger.bind(e=str(e)).warning("Outbox item will retry")
 
             logger.info("Processing outbox completed")
 
