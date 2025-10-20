@@ -60,6 +60,18 @@ class MessageService:
 
         return user
 
+    @staticmethod
+    def _create_message_event_payload(message: Message, user: User) -> EventPayload:
+        return EventPayload(
+            payload={
+                "message": message.content,
+                "message_id": str(message.id),
+                "user_id": str(user.id),
+                "username": user.username,
+            },
+            timestamp=datetime.now(timezone.utc).isoformat(),
+        )
+
     async def send_message(
         self, room_id: UUID, user_id: UUID, content: str
     ) -> MessagePublicDTO:
@@ -92,19 +104,13 @@ class MessageService:
 
         message_create: Message = await self._tm.run_in_transaction(_txn)
 
-        event = EventPayload(
-            payload={
-                "message": message_create.content,
-                "message_id": str(message_create.id),
-                "user_id": str(user_id),
-                "username": user.username,
-            },
-            timestamp=datetime.now(timezone.utc).isoformat(),
+        event_payload = self._create_message_event_payload(
+            message=message_create, user=user
         )
         await self._conn.broadcast_event(
             room_id=room_id,
             event_type=BroadcastEventType.MESSAGE_CREATED,
-            event_payload=event,
+            event_payload=event_payload,
         )
         return message_to_dto(message=message_create, username=user.username)
 
@@ -134,25 +140,18 @@ class MessageService:
                 dedup_key=f"message_edited:{message.id}",
                 db_session=db_session,
             )
-
             logger.bind(message_id=message.id).info("Message edited")
             return message
 
         message_update = await self._tm.run_in_transaction(_txn)
 
-        event = EventPayload(
-            payload={
-                "message": message_update.content,
-                "message_id": str(message_update.id),
-                "user_id": str(user_id),
-                "username": user.username,
-            },
-            timestamp=datetime.now(timezone.utc).isoformat(),
+        event_payload = self._create_message_event_payload(
+            message=message_update, user=user
         )
         await self._conn.broadcast_event(
             room_id=message.room_id,
             event_type=BroadcastEventType.MESSAGE_EDITED,
-            event_payload=event,
+            event_payload=event_payload,
         )
         return message_to_dto(message=message_update, username=user.username)
 
@@ -179,23 +178,15 @@ class MessageService:
                 dedup_key=f"message_deleted:{message.id}",
                 db_session=db_session,
             )
-
             logger.bind(message_id=message.id).info("Message deleted")
 
         await self._tm.run_in_transaction(_txn)
 
-        event = EventPayload(
-            payload={
-                "message_id": str(message_id),
-                "user_id": str(user_id),
-                "username": user.username,
-            },
-            timestamp=datetime.now(timezone.utc).isoformat(),
-        )
+        event_payload = self._create_message_event_payload(message=message, user=user)
         await self._conn.broadcast_event(
             room_id=message.room_id,
             event_type=BroadcastEventType.MESSAGE_DELETED,
-            event_payload=event,
+            event_payload=event_payload,
         )
 
     async def get_recent_messages(
