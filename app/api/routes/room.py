@@ -79,11 +79,11 @@ async def get_room(
 @router.get("/get-users/{room_id}")
 async def list_room_users(
     room_id: UUID,
-    _: UUID = Depends(get_current_user_id),
+    current_user_id: UUID = Depends(get_current_user_id),
     room_service: RoomService = Depends(get_room_service),
 ) -> list[UserPublic]:
     logger.bind(room_id=room_id).debug("Fetching room users...")
-    users = await room_service.list_room_users(room_id=room_id)
+    users = await room_service.list_room_users(room_id=room_id, user_id=current_user_id)
     logger.bind(room_id=room_id, count=len(users)).debug("Fetched room users")
     return [UserPublic.model_validate(asdict(user)) for user in users]
 

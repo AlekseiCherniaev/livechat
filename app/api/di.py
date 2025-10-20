@@ -5,6 +5,7 @@ from fastapi import Request, Depends
 from pymongo import AsyncMongoClient
 from pymongo.asynchronous.database import AsyncDatabase
 from redis.asyncio import Redis
+from starlette.websockets import WebSocket
 
 from app.adapters.analytics.analytics import ClickHouseAnalyticsRepository
 from app.adapters.connection.redis_connection import RedisConnectionPort
@@ -174,6 +175,7 @@ def get_room_service(
     join_request_repo: JoinRequestRepository = Depends(get_join_request_repo),
     room_membership_repo: RoomMembershipRepository = Depends(get_room_membership_repo),
     outbox_repo: OutboxRepository = Depends(get_outbox_repo),
+    connection_port: ConnectionPort = Depends(get_connection),
     transaction_manager: TransactionManager = Depends(get_transaction_manager),
 ) -> RoomService:
     return RoomService(
@@ -182,6 +184,7 @@ def get_room_service(
         join_request_repo=join_request_repo,
         room_membership_repo=room_membership_repo,
         outbox_repo=outbox_repo,
+        connection_port=connection_port,
         transaction_manager=transaction_manager,
     )
 
@@ -192,6 +195,7 @@ def get_user_service(
     ws_session_repo: WebSocketSessionRepository = Depends(get_websocket_session_repo),
     outbox_repo: OutboxRepository = Depends(get_outbox_repo),
     password_hasher: PasswordHasherPort = Depends(get_password_hasher),
+    connection_port: ConnectionPort = Depends(get_connection),
     transaction_manager: TransactionManager = Depends(get_transaction_manager),
 ) -> UserService:
     return UserService(
@@ -200,6 +204,7 @@ def get_user_service(
         ws_session_repo=ws_session_repo,
         outbox_repo=outbox_repo,
         password_hasher_port=password_hasher,
+        connection_port=connection_port,
         transaction_manager=transaction_manager,
     )
 
@@ -207,6 +212,7 @@ def get_user_service(
 def get_websocket_service(
     ws_session_repo: WebSocketSessionRepository = Depends(get_websocket_session_repo),
     user_repo: UserRepository = Depends(get_user_repo),
+    session_repo: UserSessionRepository = Depends(get_user_session_repo),
     room_repo: RoomRepository = Depends(get_room_repo),
     outbox_repo: OutboxRepository = Depends(get_outbox_repo),
     membership_repo: RoomMembershipRepository = Depends(get_room_membership_repo),
@@ -216,11 +222,31 @@ def get_websocket_service(
     return WebSocketService(
         ws_session_repo=ws_session_repo,
         user_repo=user_repo,
+        session_repo=session_repo,
         room_repo=room_repo,
         outbox_repo=outbox_repo,
         membership_repo=membership_repo,
         connection_port=connection_port,
         transaction_manager=transaction_manager,
+    )
+
+
+def get_websocket_service_from_websocket(
+    websocket: WebSocket,
+) -> WebSocketService:
+    mongo_db = websocket.app.state.mongo_db
+    mongo_client = websocket.app.state.mongo_client
+    redis = websocket.app.state.redis
+
+    return WebSocketService(
+        ws_session_repo=RedisWebSocketSessionRepository(redis=redis),
+        user_repo=MongoUserRepository(db=mongo_db),
+        session_repo=RedisSessionRepository(redis=redis),
+        room_repo=MongoRoomRepository(db=mongo_db),
+        outbox_repo=MongoOutboxRepository(db=mongo_db),
+        membership_repo=MongoRoomMembershipRepository(db=mongo_db),
+        connection_port=RedisConnectionPort(redis=redis),
+        transaction_manager=MongoTransactionManager(client=mongo_client),
     )
 
 

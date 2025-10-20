@@ -3,6 +3,7 @@ from uuid import UUID
 
 import structlog
 from fastapi import Response, Request, Depends
+from starlette.websockets import WebSocket
 
 from app.api.di import get_user_service
 from app.api.schemas.user import UserPublic
@@ -27,6 +28,16 @@ def set_session_cookie(response: Response, session_id: str) -> None:
     )
 
 
+async def get_websocket_room_id(websocket: WebSocket) -> UUID:
+    room_id_str = websocket.query_params.get("room_id")
+    if not room_id_str:
+        raise ValueError("room_id is required")
+    try:
+        return UUID(room_id_str)
+    except ValueError:
+        raise ValueError("Invalid room_id")
+
+
 async def get_current_user(
     request: Request, user_service: UserService = Depends(get_user_service)
 ) -> UserPublic:
@@ -45,13 +56,3 @@ async def get_current_user_id(
     user_id = await user_service.get_user_id_by_session(session_id=session_cookie)
     logger.bind(session_cookie=session_cookie).debug("Got current user id")
     return user_id
-
-
-async def get_current_session_id(
-    request: Request, user_service: UserService = Depends(get_user_service)
-) -> UUID:
-    session_cookie = request.cookies.get("session_id")
-    logger.bind(session_cookie=session_cookie).debug("Getting current session id...")
-    session_id = await user_service.get_valid_session_id(session_id=session_cookie)
-    logger.bind(session_cookie=session_cookie).debug("Got current session id")
-    return session_id
