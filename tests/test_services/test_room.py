@@ -28,6 +28,7 @@ class TestRoomService:
         join_repo,
         membership_repo,
         outbox_repo,
+        connection_port,
         tm,
     ):
         return RoomService(
@@ -36,6 +37,7 @@ class TestRoomService:
             join_repo,
             membership_repo,
             outbox_repo,
+            connection_port,
             tm,
         )
 

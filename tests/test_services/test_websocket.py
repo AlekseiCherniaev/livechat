@@ -28,6 +28,7 @@ class TestWebSocketService:
         self,
         ws_session_repo,
         user_repo,
+        session_repo,
         room_repo,
         membership_repo,
         outbox_repo,
@@ -37,6 +38,7 @@ class TestWebSocketService:
         return WebSocketService(
             ws_session_repo=ws_session_repo,
             user_repo=user_repo,
+            session_repo=session_repo,
             room_repo=room_repo,
             membership_repo=membership_repo,
             outbox_repo=outbox_repo,
@@ -53,7 +55,7 @@ class TestWebSocketService:
             "app.domain.services.websocket.create_outbox_analytics_event",
             new=AsyncMock(),
         ) as create_event:
-            await service.connect(session)
+            await service.connect_to_room(session)
 
         tm.run_in_transaction.assert_awaited()
         ws_session_repo.save.assert_awaited_with(session=session, db_session=ANY)
@@ -79,7 +81,9 @@ class TestWebSocketService:
             "app.domain.services.websocket.create_outbox_analytics_event",
             new=AsyncMock(),
         ) as create_event:
-            await service.disconnect(session_id=session.id, user_id=session.user_id)
+            await service.disconnect_from_room(
+                session_id=session.id, user_id=session.user_id
+            )
 
         ws_session_repo.get_by_id.assert_awaited_with(session_id=session.id)
         ws_session_repo.delete_by_id.assert_awaited_with(
@@ -104,7 +108,7 @@ class TestWebSocketService:
         session_id = uuid4()
         user_id = uuid4()
 
-        await service.disconnect(session_id=session_id, user_id=user_id)
+        await service.disconnect_from_room(session_id=session_id, user_id=user_id)
 
         ws_session_repo.get_by_id.assert_awaited_with(session_id=session_id)
         connection_port.disconnect_user_from_room.assert_not_awaited()

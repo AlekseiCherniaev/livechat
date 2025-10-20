@@ -11,6 +11,7 @@ from app.core.constants import (
 from app.domain.dtos.message import message_to_dto, MessagePublicDTO
 from app.domain.entities.event_payload import EventPayload
 from app.domain.entities.message import Message
+from app.domain.entities.user import User
 from app.domain.exceptions.message import MessageNotFound, MessagePermissionError
 from app.domain.exceptions.user import UserNotFound
 from app.domain.ports.connection import ConnectionPort
@@ -38,12 +39,12 @@ class MessageService:
         self._user_repo = user_repo
         self._membership_repo = membership_repo
         self._outbox_repo = outbox_repo
-        self._connection_port = connection_port
+        self._conn = connection_port
         self._tm = transaction_manager
 
-    async def send_message(
-        self, room_id: UUID, user_id: UUID, content: str
-    ) -> MessagePublicDTO:
+    async def _validate_user(
+        self, user_id: UUID, room_id: UUID, creator_id: UUID | None = None
+    ) -> User:
         user = await self._user_repo.get_by_id(user_id=user_id)
         if user is None:
             raise UserNotFound
@@ -53,6 +54,16 @@ class MessageService:
         )
         if not membership:
             raise MessagePermissionError
+
+        if creator_id and creator_id != user_id:
+            raise MessagePermissionError
+
+        return user
+
+    async def send_message(
+        self, room_id: UUID, user_id: UUID, content: str
+    ) -> MessagePublicDTO:
+        user = await self._validate_user(user_id=user_id, room_id=room_id)
 
         async def _txn(db_session: Any) -> Message:
             message = Message(
@@ -80,37 +91,33 @@ class MessageService:
             return message
 
         message_create: Message = await self._tm.run_in_transaction(_txn)
-        payload = EventPayload(
+
+        event = EventPayload(
+            user_id=user_id,
             username=user.username,
-            content=message_create.content,
+            payload={
+                "message": message_create.content,
+                "message_id": str(message_create.id),
+            },
             timestamp=datetime.now(timezone.utc).isoformat(),
         )
-        await self._connection_port.broadcast_event(
+        await self._conn.broadcast_event(
             room_id=room_id,
             event_type=BroadcastEventType.MESSAGE_CREATED,
-            event_payload=payload,
+            event_payload=event,
         )
         return message_to_dto(message=message_create, username=user.username)
 
     async def edit_message(
         self, message_id: UUID, user_id: UUID, new_content: str
     ) -> MessagePublicDTO:
-        user = await self._user_repo.get_by_id(user_id=user_id)
-        if user is None:
-            raise UserNotFound
-
         message = await self._message_repo.get_by_id(message_id=message_id)
         if not message:
             raise MessageNotFound
 
-        membership = await self._membership_repo.exists(
-            room_id=message.room_id, user_id=user_id
+        user = await self._validate_user(
+            user_id=user_id, room_id=message.room_id, creator_id=message.user_id
         )
-        if not membership:
-            raise MessagePermissionError
-
-        if message.user_id != user_id:
-            raise MessagePermissionError
 
         async def _txn(db_session: Any) -> Message:
             message.content = new_content
@@ -131,36 +138,32 @@ class MessageService:
             logger.bind(message_id=message.id).info("Message edited")
             return message
 
-        message_update: Message = await self._tm.run_in_transaction(_txn)
-        payload = EventPayload(
+        message_update = await self._tm.run_in_transaction(_txn)
+
+        event = EventPayload(
+            user_id=user_id,
             username=user.username,
-            content=message_update.content,
+            payload={
+                "message": message_update.content,
+                "message_id": str(message_update.id),
+            },
             timestamp=datetime.now(timezone.utc).isoformat(),
         )
-        await self._connection_port.broadcast_event(
+        await self._conn.broadcast_event(
             room_id=message.room_id,
             event_type=BroadcastEventType.MESSAGE_EDITED,
-            event_payload=payload,
+            event_payload=event,
         )
         return message_to_dto(message=message_update, username=user.username)
 
     async def delete_message(self, message_id: UUID, user_id: UUID) -> None:
-        user = await self._user_repo.get_by_id(user_id=user_id)
-        if user is None:
-            raise UserNotFound
-
         message = await self._message_repo.get_by_id(message_id=message_id)
         if not message:
             raise MessageNotFound
 
-        membership = await self._membership_repo.exists(
-            room_id=message.room_id, user_id=user_id
+        user = await self._validate_user(
+            user_id=user_id, room_id=message.room_id, creator_id=message.user_id
         )
-        if not membership:
-            raise MessagePermissionError
-
-        if message.user_id != user_id:
-            raise MessagePermissionError
 
         async def _txn(db_session: Any) -> None:
             await self._message_repo.delete_by_id(
@@ -180,24 +183,23 @@ class MessageService:
             logger.bind(message_id=message.id).info("Message deleted")
 
         await self._tm.run_in_transaction(_txn)
-        payload = EventPayload(
+
+        event = EventPayload(
+            user_id=user_id,
             username=user.username,
+            payload={"message_id": str(message_id)},
             timestamp=datetime.now(timezone.utc).isoformat(),
         )
-        await self._connection_port.broadcast_event(
+        await self._conn.broadcast_event(
             room_id=message.room_id,
             event_type=BroadcastEventType.MESSAGE_DELETED,
-            event_payload=payload,
+            event_payload=event,
         )
 
     async def get_recent_messages(
         self, room_id: UUID, user_id: UUID, limit: int, before: datetime | None
     ) -> list[MessagePublicDTO]:
-        membership = await self._membership_repo.exists(
-            room_id=room_id, user_id=user_id
-        )
-        if not membership:
-            raise MessagePermissionError
+        await self._validate_user(user_id=user_id, room_id=room_id)
 
         messages = await self._message_repo.get_recent_by_room(
             room_id=room_id, limit=limit, before=before

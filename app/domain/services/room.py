@@ -8,6 +8,7 @@ from app.core.constants import (
     NotificationType,
     AnalyticsEventType,
     RoomRole,
+    BroadcastEventType,
 )
 from app.domain.dtos.join_request import (
     JoinRequestCreateDTO,
@@ -21,6 +22,7 @@ from app.domain.dtos.room import (
     room_to_dto,
 )
 from app.domain.dtos.user import user_to_dto, UserPublicDTO
+from app.domain.entities.event_payload import EventPayload
 from app.domain.entities.join_request import JoinRequest
 from app.domain.entities.room import Room
 from app.domain.entities.room_membership import RoomMembership
@@ -35,6 +37,7 @@ from app.domain.exceptions.room import (
     RoomPermissionError,
 )
 from app.domain.exceptions.user import UserNotFound
+from app.domain.ports.connection import ConnectionPort
 from app.domain.ports.transaction_manager import TransactionManager
 from app.domain.repos.join_request import JoinRequestRepository
 from app.domain.repos.outbox import OutboxRepository
@@ -57,6 +60,7 @@ class RoomService:
         join_request_repo: JoinRequestRepository,
         room_membership_repo: RoomMembershipRepository,
         outbox_repo: OutboxRepository,
+        connection_port: ConnectionPort,
         transaction_manager: TransactionManager,
     ):
         self._room_repo = room_repo
@@ -64,7 +68,18 @@ class RoomService:
         self._join_repo = join_request_repo
         self._membership_repo = room_membership_repo
         self._outbox_repo = outbox_repo
+        self._conn = connection_port
         self._tm = transaction_manager
+
+    async def _check_permissions(self, user_id: UUID, room_id: UUID) -> Room:
+        room = await self._room_repo.get_by_id(room_id=room_id)
+        if not room:
+            raise RoomNotFound
+
+        if room.created_by != user_id:
+            raise RoomPermissionError
+
+        return room
 
     async def create_room(self, room_data: RoomCreateDTO) -> RoomPublicDTO:
         if await self._room_repo.exists(name=room_data.name):
@@ -97,23 +112,18 @@ class RoomService:
                 dedup_key=f"room_created:{room.id}",
                 db_session=db_session,
             )
-            logger.bind(room_id=room.id).info("Room created")
-
+            logger.bind(room_id=room.id).debug("Room created")
             return room
 
         room_create = await self._tm.run_in_transaction(_txn)
-
         return room_to_dto(room=room_create)
 
     async def update_room(
         self, room_id: UUID, room_data: RoomUpdateDTO
     ) -> RoomPublicDTO:
-        room = await self._room_repo.get_by_id(room_id=room_id)
-        if not room:
-            raise RoomNotFound
-
-        if room.created_by != room_data.created_by:
-            raise RoomPermissionError
+        room = await self._check_permissions(
+            user_id=room_data.created_by, room_id=room_id
+        )
 
         changed = False
         if (
@@ -141,21 +151,14 @@ class RoomService:
                 dedup_key=f"room_update:{room.id}:{room.updated_at.timestamp()}",
                 db_session=db_session,
             )
-            logger.bind(room_id=room.id).info("Room updated")
-
+            logger.bind(room_id=room.id).debug("Room updated")
             return room_saved
 
         room_update = await self._tm.run_in_transaction(_txn)
-
         return room_to_dto(room=room_update)
 
     async def delete_room(self, room_id: UUID, created_by: UUID) -> None:
-        room = await self._room_repo.get_by_id(room_id=room_id)
-        if not room:
-            raise RoomNotFound
-
-        if room.created_by != created_by:
-            raise RoomPermissionError
+        room = await self._check_permissions(user_id=created_by, room_id=room_id)
 
         async def _txn(db_session: Any) -> None:
             await self._room_repo.delete_by_id(room_id=room_id, db_session=db_session)
@@ -173,7 +176,7 @@ class RoomService:
                 db_session=db_session,
             )
 
-            logger.bind(room_id=room_id).info("Room deleted")
+            logger.bind(room_id=room_id).debug("Room deleted")
 
         await self._tm.run_in_transaction(_txn)
 
@@ -184,7 +187,12 @@ class RoomService:
 
         return room_to_dto(room=room)
 
-    async def list_room_users(self, room_id: UUID) -> list[UserPublicDTO]:
+    async def list_room_users(
+        self, room_id: UUID, user_id: UUID
+    ) -> list[UserPublicDTO]:
+        if not await self._membership_repo.exists(user_id=user_id, room_id=room_id):
+            raise RoomPermissionError
+
         users = await self._membership_repo.list_users(room_id=room_id)
         return [user_to_dto(user=user) for user in users]
 
@@ -203,15 +211,9 @@ class RoomService:
     async def list_room_join_requests(
         self, room_id: UUID, created_by: UUID
     ) -> list[JoinRequestPublicDTO]:
-        room = await self._room_repo.get_by_id(room_id=room_id)
-        if not room:
-            raise RoomNotFound
-
-        if room.created_by != created_by:
-            raise RoomPermissionError
+        await self._check_permissions(user_id=created_by, room_id=room_id)
 
         join_requests = await self._join_repo.list_by_room(room_id=room_id)
-
         return [
             join_request_to_dto(
                 join_request=join_request, room_name=room.name, username=user.username
@@ -244,10 +246,9 @@ class RoomService:
         if user is None:
             raise UserNotFound
 
-        exists = await self._membership_repo.exists(
+        if await self._membership_repo.exists(
             room_id=join_request_data.room_id, user_id=user.id
-        )
-        if exists:
+        ):
             raise RoomPermissionError(message="You are already in this room")
 
         if room.is_public:
@@ -269,12 +270,22 @@ class RoomService:
                     dedup_key=f"user_join:{room.id}:{join_request_data.user_id}",
                     db_session=db_session,
                 )
-
-                logger.bind(room_id=room.id, user_id=join_request_data.user_id).info(
+                logger.bind(room_id=room.id, user_id=join_request_data.user_id).debug(
                     "User joined public room"
                 )
 
             await self._tm.run_in_transaction(_txn)
+
+            event = EventPayload(
+                user_id=join_request_data.user_id,
+                username=user.username,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+            await self._conn.broadcast_event(
+                room_id=join_request_data.room_id,
+                event_type=BroadcastEventType.USER_JOINED,
+                event_payload=event,
+            )
             return None
 
         already_requested = await self._join_repo.exists(
@@ -313,7 +324,7 @@ class RoomService:
 
             logger.bind(
                 room_id=join_request_data.room_id, user_id=join_request_data.user_id
-            ).info("Join request created")
+            ).debug("Join request created")
 
         await self._tm.run_in_transaction(__txn)
         return None
@@ -325,18 +336,20 @@ class RoomService:
         if not request:
             raise JoinRequestNotFound
 
-        room = await self._room_repo.get_by_id(room_id=request.room_id)
-        if room is None:
-            raise RoomNotFound
+        user = await self._user_repo.get_by_id(user_id=request.user_id)
+        if not user:
+            raise UserNotFound
 
-        if room.created_by != created_by:
-            raise RoomPermissionError
+        room = await self._check_permissions(
+            user_id=created_by, room_id=request.room_id
+        )
 
         async def _txn(db_session: Any) -> None:
             if accept:
                 await self._add_participant(
                     room_id=request.room_id,
                     user_id=request.user_id,
+                    role=RoomRole.MEMBER,
                     db_session=db_session,
                 )
                 notif_type = NotificationType.JOIN_REQUEST_ACCEPTED
@@ -369,9 +382,22 @@ class RoomService:
                 db_session=db_session,
             )
 
-            logger.bind(request_id=request_id).info("Join request handled")
+            logger.bind(request_id=request_id).debug("Join request handled")
 
         await self._tm.run_in_transaction(_txn)
+
+        if accept:
+            event = EventPayload(
+                user_id=request.user_id,
+                username=user.username,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+            await self._conn.broadcast_event(
+                room_id=request.room_id,
+                event_type=BroadcastEventType.USER_JOINED,
+                event_payload=event,
+            )
+        return None
 
     async def _add_participant(
         self,
@@ -396,19 +422,17 @@ class RoomService:
             room_membership=room_membership, db_session=db_session
         )
         await self._room_repo.add_participant(room_id=room_id, db_session=db_session)
-        logger.bind(room_id=room_id, user_id=user_id).info("User added to room")
-
+        logger.bind(room_id=room_id, user_id=user_id).debug("User added to room")
         return None
 
     async def remove_participant(
         self, room_id: UUID, user_id: UUID, created_by: UUID
     ) -> None:
-        room = await self._room_repo.get_by_id(room_id=room_id)
-        if room is None:
-            raise RoomNotFound
+        await self._check_permissions(user_id=created_by, room_id=room_id)
 
-        if room.created_by != created_by:
-            raise RoomPermissionError
+        user = await self._user_repo.get_by_id(user_id=user_id)
+        if not user:
+            raise UserNotFound
 
         async def _txn(db_session: Any) -> None:
             await self._membership_repo.delete(
@@ -418,7 +442,9 @@ class RoomService:
                 room_id=room_id, db_session=db_session
             )
 
-            logger.bind(room_id=room_id, user_id=user_id).info("User removed from room")
+            logger.bind(room_id=room_id, user_id=user_id).debug(
+                "User removed from room"
+            )
 
             await create_outbox_analytics_event(
                 outbox_repo=self._outbox_repo,
@@ -431,6 +457,18 @@ class RoomService:
 
         await self._tm.run_in_transaction(_txn)
 
+        event = EventPayload(
+            user_id=user_id,
+            username=user.username,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+        )
+        await self._conn.broadcast_event(
+            room_id=room_id,
+            event_type=BroadcastEventType.USER_LEFT,
+            event_payload=event,
+        )
+        await self._conn.disconnect_user_from_room(room_id=room_id, user_id=user_id)
+
     async def leave_room(self, room_id: UUID, user_id: UUID) -> None:
         room = await self._room_repo.get_by_id(room_id=room_id)
         if room is None:
@@ -439,6 +477,10 @@ class RoomService:
         exists = await self._membership_repo.exists(room_id=room_id, user_id=user_id)
         if not exists:
             return None
+
+        user = await self._user_repo.get_by_id(user_id=user_id)
+        if not user:
+            raise UserNotFound
 
         async def _txn(db_session: Any) -> None:
             await self._membership_repo.delete(
@@ -452,14 +494,14 @@ class RoomService:
                 await self._membership_repo.delete_by_room(
                     room_id=room_id, db_session=db_session
                 )
-                logger.bind(room_id=room_id, user_id=user_id).info(
+                logger.bind(room_id=room_id, user_id=user_id).debug(
                     "Room was deleted as creator left"
                 )
             else:
                 await self._room_repo.remove_participant(
                     room_id=room_id, db_session=db_session
                 )
-                logger.bind(room_id=room_id, user_id=user_id).info(
+                logger.bind(room_id=room_id, user_id=user_id).debug(
                     "User removed from room"
                 )
 
@@ -473,4 +515,16 @@ class RoomService:
             )
 
         await self._tm.run_in_transaction(_txn)
+
+        event = EventPayload(
+            user_id=user_id,
+            username=user.username,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+        )
+        await self._conn.broadcast_event(
+            room_id=room_id,
+            event_type=BroadcastEventType.USER_LEFT,
+            event_payload=event,
+        )
+        await self._conn.disconnect_user_from_room(room_id=room_id, user_id=user_id)
         return None
