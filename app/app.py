@@ -4,6 +4,7 @@ from typing import AsyncGenerator, Any
 import structlog
 from fastapi import FastAPI
 from redis.asyncio import Redis
+from starlette.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
 
 from app.adapters.analytics.clickhouse_client import create_clickhouse_client
@@ -68,5 +69,12 @@ def init_app() -> FastAPI:
 
     app.include_router(get_main_router())
     register_exception_handlers(app)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=get_settings().allowed_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     return app

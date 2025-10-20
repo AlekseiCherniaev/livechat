@@ -1,7 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.core.constants import Environment
@@ -28,6 +27,26 @@ class Settings(BaseSettings):
     environment: Environment = Environment.TEST
     log_level: str = "DEBUG"
     fast_api_debug: bool = True
+    domain: str = "localhost:5173"  # "living-chat.online"
+    domain_https: str = f"https://{domain}"
+    domain_wss: str = f"wss://{domain}"
+
+    @property
+    def allowed_origins(self) -> list[str]:
+        origins = [
+            self.domain_https,
+            self.domain_wss,
+        ]
+        if self.environment != Environment.PROD:
+            origins.extend(
+                [
+                    "http://localhost:5173",
+                    "http://127.0.0.1:5173",
+                    "ws://localhost:5173",
+                    "ws://127.0.0.1:5173",
+                ]
+            )
+        return origins
 
     app_host: str = "127.0.0.1"
     app_port: int = 8000
@@ -38,7 +57,6 @@ class Settings(BaseSettings):
     mongo_initdb_root_username: str = "root"
     mongo_initdb_root_password: str = "root-password"
 
-    @computed_field  # type: ignore
     @property
     def mongo_uri(self) -> str:
         if self.environment == Environment.TEST:
@@ -53,7 +71,6 @@ class Settings(BaseSettings):
     user_session_ttl_seconds: int = 60 * 60
     web_socket_session_ttl_seconds: int = 1800
 
-    @computed_field  # type: ignore
     @property
     def redis_app_dsn(self) -> str:
         return f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db_app}"
@@ -64,14 +81,12 @@ class Settings(BaseSettings):
     celery_redis_worker_lock_key_timeout: int = 60 * 5
     celery_schedule: float = 60.0
 
-    @computed_field  # type: ignore
     @property
     def redis_celery_broker_dsn(self) -> str:
         return (
             f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db_celery_broker}"
         )
 
-    @computed_field  # type: ignore
     @property
     def redis_celery_backend_dsn(self) -> str:
         return f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db_celery_backend}"
