@@ -186,7 +186,7 @@ async def process_outbox() -> None:
                             and UUID(payload.get("user_id")),
                             room_id=payload.get("room_id")
                             and UUID(payload.get("room_id")),
-                            payload=payload.get("payload", {}),
+                            payload=payload.get("payload") or {},
                             id=UUID(payload.get("id")),
                         )
                         await analytics_port.publish_event(event)

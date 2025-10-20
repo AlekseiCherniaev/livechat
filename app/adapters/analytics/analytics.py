@@ -17,7 +17,7 @@ class ClickHouseAnalyticsRepository:
 
     async def publish_event(self, event: AnalyticsEvent) -> None:
         payload_serialized = None
-        if event.payload is not None:
+        if event.payload:
             payload_serialized = orjson.dumps(event.payload).decode("utf-8")
 
         await self._client.insert(
@@ -26,10 +26,10 @@ class ClickHouseAnalyticsRepository:
                 [
                     str(event.id),
                     event.event_type.value,
-                    event.user_id and str(event.user_id),
-                    event.room_id and str(event.room_id),
+                    str(event.user_id) if event.user_id else None,
+                    str(event.room_id) if event.room_id else None,
                     event.created_at,
-                    payload_serialized,
+                    payload_serialized if payload_serialized else "",
                 ]
             ],
             column_names=[
