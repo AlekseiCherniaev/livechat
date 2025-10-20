@@ -43,20 +43,37 @@ class MongoOutboxRepository:
         )
         return [document_to_outbox(doc) async for doc in cursor]
 
-    async def mark_in_progress(
+    async def mark_pending(
         self,
         outbox_id: UUID,
         retry: bool = False,
+        last_error: str | None = None,
         db_session: AsyncClientSession | None = None,
     ) -> None:
-        update_doc: dict[str, Any] = {
-            "$set": {"status": OutboxStatus.IN_PROGRESS.value}
-        }
+        new_dict = {"status": OutboxStatus.PENDING.value}
+        if last_error:
+            new_dict.update({"last_error": last_error})
+        update_doc: dict[str, Any] = {"$set": new_dict}
         if retry:
             update_doc["$inc"] = {"retries": 1}
         await self._col.update_one(
             {"_id": str(outbox_id)},
             update_doc,
+            session=db_session,
+        )
+
+    async def mark_in_progress(
+        self,
+        outbox_id: UUID,
+        db_session: AsyncClientSession | None = None,
+    ) -> None:
+        await self._col.update_one(
+            {"_id": str(outbox_id)},
+            {
+                "$set": {
+                    "status": OutboxStatus.IN_PROGRESS.value,
+                }
+            },
             session=db_session,
         )
 

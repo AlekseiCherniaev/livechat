@@ -186,7 +186,7 @@ async def process_outbox() -> None:
                             and UUID(payload.get("user_id")),
                             room_id=payload.get("room_id")
                             and UUID(payload.get("room_id")),
-                            payload=payload.get("payload"),
+                            payload=payload.get("payload", {}),
                             id=UUID(payload.get("id")),
                         )
                         await analytics_port.publish_event(event)
@@ -203,8 +203,8 @@ async def process_outbox() -> None:
                             "Outbox item failed permanently"
                         )
                     else:
-                        await outbox_repo.mark_in_progress(
-                            outbox_id=outbox.id, retry=True
+                        await outbox_repo.mark_pending(
+                            outbox_id=outbox.id, retry=True, last_error=str(e)
                         )
                         task_logger.bind(e=str(e)).warning("Outbox item will retry")
 
