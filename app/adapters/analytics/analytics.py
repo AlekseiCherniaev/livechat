@@ -43,17 +43,21 @@ class ClickHouseAnalyticsRepository:
         )
 
     async def get_room_stats(self, room_id: UUID) -> RoomStats | None:
-        query = f"""
+        event_type = AnalyticsEventType.MESSAGE_SENT.value
+        query = """
                 SELECT
                     COUNT(*) AS total_messages,
-                    COUNT(DISTINCT user_id) AS users_amount,
+                    uniqExact(user_id) AS users_amount,
                     MAX(created_at) AS last_updated
                 FROM analytics_events
-                WHERE room_id = '{room_id}'
-                  AND event_type = '{AnalyticsEventType.MESSAGE_SENT.value}'
+                WHERE room_id = %(room_id)s
+                  AND event_type = %(event_type)s
                 """
 
-        result = await self._client.query(query)
+        result = await self._client.query(
+            query, {"room_id": str(room_id), "event_type": event_type}
+        )
+
         if not result.result_rows:
             return None
 
@@ -66,54 +70,50 @@ class ClickHouseAnalyticsRepository:
         )
 
     async def get_user_activity(self, user_id: UUID) -> dict[str, int] | None:
-        query_messages = f"""
-                SELECT COUNT(*) AS messages
+        query = """
+                SELECT
+                    COUNTIf(event_type = %(message_sent)s) AS messages,
+                    uniqExactIf(room_id, event_type = %(user_joined)s) AS rooms_joined
                 FROM analytics_events
-                WHERE user_id = '{user_id}'
-                  AND event_type = '{AnalyticsEventType.MESSAGE_SENT.value}'
+                WHERE user_id = %(user_id)s
                 """
 
-        query_rooms = f"""
-                SELECT COUNT(DISTINCT room_id) AS rooms_joined
-                FROM analytics_events
-                WHERE user_id = '{user_id}'
-                  AND event_type = '{AnalyticsEventType.USER_JOINED_ROOM.value}'
-                """
+        result = await self._client.query(
+            query,
+            {
+                "user_id": str(user_id),
+                "message_sent": AnalyticsEventType.MESSAGE_SENT.value,
+                "user_joined": AnalyticsEventType.USER_JOINED_ROOM.value,
+            },
+        )
 
-        messages_res = await self._client.query(query_messages)
-        rooms_res = await self._client.query(query_rooms)
-
-        if not messages_res.result_rows and not rooms_res.result_rows:
+        if not result.result_rows:
             return None
 
-        messages = (
-            next(messages_res.named_results())["messages"]
-            if messages_res.result_rows
-            else 0
-        )
-        rooms_joined = (
-            next(rooms_res.named_results())["rooms_joined"]
-            if rooms_res.result_rows
-            else 0
-        )
-
-        return {"messages": messages, "rooms_joined": rooms_joined}
+        row = next(result.named_results())
+        return {
+            "messages": row["messages"] or 0,
+            "rooms_joined": row["rooms_joined"] or 0,
+        }
 
     async def top_active_rooms(self, limit: int) -> list[RoomStats]:
-        query = f"""
+        query = """
                 SELECT
                     room_id,
                     COUNT(*) AS total_messages,
-                    COUNT(DISTINCT user_id) AS users_amount,
+                    uniqExact(user_id) AS users_amount,
                     MAX(created_at) AS last_updated
                 FROM analytics_events
-                WHERE event_type = '{AnalyticsEventType.MESSAGE_SENT.value}'
+                WHERE event_type = %(event_type)s
                 GROUP BY room_id
                 ORDER BY total_messages DESC
-                LIMIT {limit}
+                LIMIT %(limit)s
                 """
 
-        result = await self._client.query(query)
+        result = await self._client.query(
+            query, {"event_type": AnalyticsEventType.MESSAGE_SENT.value, "limit": limit}
+        )
+
         return [
             RoomStats(
                 room_id=row["room_id"],
@@ -128,15 +128,23 @@ class ClickHouseAnalyticsRepository:
         since_time = datetime.now(timezone.utc) - timedelta(minutes=since_minutes)
         since_str = since_time.strftime("%Y-%m-%d %H:%M:%S")
 
-        query = f"""
+        query = """
                 SELECT COUNT(*) AS cnt
                 FROM analytics_events
-                WHERE room_id = '{room_id}'
-                  AND event_type = '{AnalyticsEventType.MESSAGE_SENT.value}'
-                  AND created_at >= toDateTime('{since_str}')
+                WHERE room_id = %(room_id)s
+                  AND event_type = %(event_type)s
+                  AND created_at >= toDateTime(%(since_time)s)
                 """
 
-        result = await self._client.query(query)
+        result = await self._client.query(
+            query,
+            parameters={
+                "room_id": str(room_id),
+                "event_type": AnalyticsEventType.MESSAGE_SENT.value,
+                "since_time": since_str,
+            },
+        )
+
         if not result.result_rows:
             return 0
 
@@ -147,30 +155,46 @@ class ClickHouseAnalyticsRepository:
         since_time = datetime.now(timezone.utc) - timedelta(days=days)
         since_str = since_time.strftime("%Y-%m-%d %H:%M:%S")
 
-        query = f"""
-        SELECT
-            COUNT(DISTINCT user_id) AS active,
-            (SELECT COUNT(DISTINCT user_id) FROM analytics_events
-             WHERE event_type = '{AnalyticsEventType.USER_REGISTERED.value}') AS total
-        FROM analytics_events
-        WHERE event_type = '{AnalyticsEventType.USER_LOGGED_IN.value}'
-          AND created_at >= toDateTime('{since_str}')
-        """
+        query = """
+                    SELECT
+                        uniqExact(user_id) AS active,
+                        (SELECT uniqExact(user_id) FROM analytics_events
+                         WHERE event_type = %(registered_event)s) AS total
+                    FROM analytics_events
+                    WHERE event_type = %(login_event)s
+                      AND created_at >= toDateTime(%(since_time)s)
+                    """
 
-        result = await self._client.query(query)
+        result = await self._client.query(
+            query,
+            parameters={
+                "registered_event": AnalyticsEventType.USER_REGISTERED.value,
+                "login_event": AnalyticsEventType.USER_LOGGED_IN.value,
+                "since_time": since_str,
+            },
+        )
+
         row = next(result.named_results())
         return (row["active"] / row["total"]) * 100 if row["total"] else 0.0
 
     async def message_edit_delete_ratio(self) -> dict[str, float]:
-        query = f"""
-        SELECT
-            COUNTIf(event_type = '{AnalyticsEventType.MESSAGE_SENT.value}') AS sent,
-            COUNTIf(event_type = '{AnalyticsEventType.MESSAGE_EDITED.value}') AS edited,
-            COUNTIf(event_type = '{AnalyticsEventType.MESSAGE_DELETED.value}') AS deleted
-        FROM analytics_events
-        """
+        query = """
+                    SELECT
+                        COUNTIf(event_type = %(sent_event)s) AS sent,
+                        COUNTIf(event_type = %(edited_event)s) AS edited,
+                        COUNTIf(event_type = %(deleted_event)s) AS deleted
+                    FROM analytics_events
+                    """
 
-        result = await self._client.query(query)
+        result = await self._client.query(
+            query,
+            parameters={
+                "sent_event": AnalyticsEventType.MESSAGE_SENT.value,
+                "edited_event": AnalyticsEventType.MESSAGE_EDITED.value,
+                "deleted_event": AnalyticsEventType.MESSAGE_DELETED.value,
+            },
+        )
+
         row = next(result.named_results())
         sent = row["sent"] or 1
         return {
@@ -179,17 +203,24 @@ class ClickHouseAnalyticsRepository:
         }
 
     async def top_social_users(self, limit: int = 10) -> list[dict[str, Any]]:
-        query = f"""
-        SELECT
-            user_id,
-            COUNT(DISTINCT room_id) AS rooms,
-            COUNTIf(event_type = '{AnalyticsEventType.MESSAGE_SENT.value}') AS messages
-        FROM analytics_events
-        WHERE user_id IS NOT NULL
-        GROUP BY user_id
-        ORDER BY rooms DESC, messages DESC
-        LIMIT {limit}
-        """
+        query = """
+                SELECT
+                    user_id,
+                    uniqExact(room_id) AS rooms,
+                    COUNTIf(event_type = %(sent_event)s) AS messages
+                FROM analytics_events
+                WHERE user_id IS NOT NULL
+                GROUP BY user_id
+                ORDER BY rooms DESC, messages DESC
+                LIMIT %(limit)s
+                """
 
-        result = await self._client.query(query)
+        result = await self._client.query(
+            query,
+            parameters={
+                "sent_event": AnalyticsEventType.MESSAGE_SENT.value,
+                "limit": limit,
+            },
+        )
+
         return list(result.named_results())

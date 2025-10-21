@@ -15,14 +15,15 @@ async def ensure_tables(client: AsyncClient) -> None:
     await client.command("""
     CREATE TABLE IF NOT EXISTS analytics_events (
         id UUID,
-        event_type String,
+        event_type LowCardinality(String),
         user_id UUID,
         room_id UUID,
         created_at DateTime64(3),
         payload String
     ) ENGINE = MergeTree()
     PARTITION BY toYYYYMM(created_at)
-    ORDER BY (room_id, created_at)
+    ORDER BY (event_type, room_id, created_at)
+    SETTINGS index_granularity = 8192
     """)
 
 
