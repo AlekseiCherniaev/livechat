@@ -91,6 +91,10 @@ class Settings(BaseSettings):
     def redis_celery_backend_dsn(self) -> str:
         return f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db_celery_backend}"
 
+    memcached_host: str = "localhost"
+    memcached_port: int = 11211
+    user_cache_key_ttl: int = 60 * 60
+
     cassandra_contact_point: str = "localhost"
     cassandra_port: int = 9042
     cassandra_keyspace: str = "livechat"

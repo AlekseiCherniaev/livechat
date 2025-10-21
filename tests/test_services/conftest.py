@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock
 from pytest_asyncio import fixture
 
 from app.domain.ports.analytics import AnalyticsPort
+from app.domain.ports.cache import CachePort
 from app.domain.ports.connection import ConnectionPort
 from app.domain.ports.notification_sender import NotificationSenderPort
 from app.domain.ports.password_hasher import PasswordHasherPort
@@ -77,6 +78,11 @@ def notification_port():
 @fixture
 def connection_port():
     return AsyncMock(spec=ConnectionPort)
+
+
+@fixture
+def cache_port():
+    return AsyncMock(spec=CachePort)
 
 
 @fixture

@@ -26,6 +26,7 @@ class TestUserService:
         outbox_repo,
         password_hasher,
         connection_port,
+        cache_port,
         tm,
     ):
         return UserService(
@@ -35,6 +36,7 @@ class TestUserService:
             outbox_repo=outbox_repo,
             password_hasher_port=password_hasher,
             connection_port=connection_port,
+            cache_port=cache_port,
             transaction_manager=tm,
         )
 
@@ -115,7 +117,9 @@ class TestUserService:
         with pytest.raises(SessionNotFound):
             await service.logout_user(str(uuid4()))
 
-    async def test_get_user_by_session_success(self, service, session_repo, user_repo):
+    async def test_get_user_by_session_success(
+        self, service, session_repo, user_repo, cache_port
+    ):
         user_id = uuid4()
         session_id = uuid4()
         session_repo.get_by_id.return_value = UserSession(
@@ -124,6 +128,7 @@ class TestUserService:
         user_repo.get_by_id.return_value = User(
             id=user_id, username="alice", hashed_password="x"
         )
+        cache_port.get.return_value = None
 
         result = await service.get_user_by_session(str(session_id))
 
@@ -137,13 +142,15 @@ class TestUserService:
             await service.get_user_by_session(str(uuid4()))
 
     async def test_get_user_by_session_user_not_found(
-        self, service, session_repo, user_repo
+        self, service, session_repo, user_repo, cache_port
     ):
         session_id = uuid4()
         session_repo.get_by_id.return_value = UserSession(
             id=session_id, user_id=uuid4(), connected_at=datetime.now(timezone.utc)
         )
         user_repo.get_by_id.return_value = None
+        cache_port.get.return_value = None
+
         with pytest.raises(UserNotFound):
             await service.get_user_by_session(str(session_id))
 

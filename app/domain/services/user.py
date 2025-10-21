@@ -5,6 +5,7 @@ from uuid import UUID
 import structlog
 
 from app.core.constants import AnalyticsEventType
+from app.core.settings import get_settings
 from app.domain.dtos.user import UserAuthDTO, UserPublicDTO, user_to_dto
 from app.domain.entities.user import User
 from app.domain.entities.user_session import UserSession
@@ -14,6 +15,7 @@ from app.domain.exceptions.user import (
     UserNotFound,
 )
 from app.domain.exceptions.user_session import SessionNotFound, InvalidSession
+from app.domain.ports.cache import CachePort
 from app.domain.ports.connection import ConnectionPort
 from app.domain.ports.password_hasher import PasswordHasherPort
 from app.domain.ports.transaction_manager import TransactionManager
@@ -35,6 +37,7 @@ class UserService:
         outbox_repo: OutboxRepository,
         password_hasher_port: PasswordHasherPort,
         connection_port: ConnectionPort,
+        cache_port: CachePort,
         transaction_manager: TransactionManager,
     ) -> None:
         self._user_repo = user_repo
@@ -43,16 +46,21 @@ class UserService:
         self._outbox_repo = outbox_repo
         self._password_hasher = password_hasher_port
         self._conn = connection_port
+        self._cache = cache_port
         self._tm = transaction_manager
+
+    @staticmethod
+    def user_cache_key(user_id: UUID) -> str:
+        return f"user:{user_id}"
 
     async def register_user(self, user_data: UserAuthDTO) -> None:
         if await self._user_repo.exists(username=user_data.username):
             raise UserAlreadyExists
 
-        async def _txn(db_session: Any) -> None:
+        async def _txn(db_session: Any) -> User:
             hashed_password = self._password_hasher.hash(password=user_data.password)
             user = User(username=user_data.username, hashed_password=hashed_password)
-            user = await self._user_repo.save(user=user, db_session=db_session)
+            await self._user_repo.save(user=user, db_session=db_session)
 
             await create_outbox_analytics_event(
                 outbox_repo=self._outbox_repo,
@@ -62,8 +70,14 @@ class UserService:
                 db_session=db_session,
             )
             logger.bind(username=user.username).debug("Saved user in repo")
+            return user
 
-        await self._tm.run_in_transaction(_txn)
+        user_create = await self._tm.run_in_transaction(_txn)
+        await self._cache.set(
+            self.user_cache_key(user_id=user_create.id),
+            value=user_create,
+            ttl=get_settings().user_cache_key_ttl,
+        )
 
     async def login_user(self, user_data: UserAuthDTO) -> UUID:
         user = await self._user_repo.get_by_username(username=user_data.username)
@@ -137,13 +151,22 @@ class UserService:
         await self._tm.run_in_transaction(_txn)
 
         await self._conn.disconnect_user(user_id=session.user_id)
+        await self._cache.delete(key=self.user_cache_key(session.user_id))
 
     async def get_user_by_session(self, session_id: str | None) -> UserPublicDTO:
         session = await self._validate_session(session_id=session_id)
 
-        user = await self._user_repo.get_by_id(user_id=session.user_id)
+        user = await self._cache.get(key=self.user_cache_key(session.user_id))
         if not user:
-            raise UserNotFound
+            user = await self._user_repo.get_by_id(user_id=session.user_id)
+            if not user:
+                raise UserNotFound
+
+            await self._cache.set(
+                key=self.user_cache_key(session.user_id),
+                value=user,
+                ttl=get_settings().user_cache_key_ttl,
+            )
 
         await self._user_repo.update_last_active(user_id=session.user_id)
         logger.bind(user_id=user.id).debug("Retrieved user from repo")
