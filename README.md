@@ -11,6 +11,17 @@ It provides real-time messaging, room management, and user analytics.
 
 ---
 
+**Key Features:**
+- **Public & Private Rooms** with join request system
+- **Real-time Notifications** for join requests and room activities  
+- **Message Management** - edit and delete messages in real-time
+- **Admin Controls** - remove users from groups with instant updates
+- **Room Search** - discover chat rooms by name, topic, or description
+- **Top Rooms** - explore popular chat rooms based on activity
+- **User & Service Analytics** - comprehensive insights and metrics
+
+---
+
 ## Features
 
 - **WebSocket-based real-time messaging** with room-based communication and with user presence tracking
@@ -77,5 +88,17 @@ It provides real-time messaging, room management, and user analytics.
 
 ### Main Application Screens
 
+<img width="1920" height="862" alt="image" src="https://github.com/user-attachments/assets/29fa3590-02dd-4732-9c7f-d47a496c3307" />
 
+---
+
+<img width="1920" height="862" alt="image" src="https://github.com/user-attachments/assets/4c5b4dc7-3320-4ca9-acb3-4e513c528473" />
+
+---
+
+<img width="1920" height="862" alt="image" src="https://github.com/user-attachments/assets/3275207f-de21-452a-9b92-4791ff8a7de3" />
+
+---
+
+<img width="1920" height="862" alt="image" src="https://github.com/user-attachments/assets/143b5c78-2836-4ea0-aac4-b51debf96666" />
 
