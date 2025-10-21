@@ -235,6 +235,12 @@ services:
       CLICKHOUSE_USER: ${CLICKHOUSE_USER}
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+      MAX_MEMORY_USAGE: 3221225472  # 3GB
+      MAX_QUERY_MEMORY: 2684354560  # 2.5GB
+      MAX_MEMORY_USAGE_FOR_USER: 2684354560  # 2.5GB
+      MAX_BYTES_BEFORE_EXTERNAL_GROUP_BY: 1073741824  # 1GB
+      MAX_PARTITIONS_PER_INSERT_BLOCK: 100
+      MAX_INSERT_BLOCK_SIZE: 1048576
     volumes:
       - clickhouse_data:/var/lib/clickhouse
     networks:
@@ -247,13 +253,13 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.5"
-          memory: 1024M
+          cpus: "1.5"
+          memory: 3072M
         reservations:
-          cpus: "0.25"
-          memory: 256M
-    mem_limit: 1024m
-    cpus: 0.5
+          cpus: "0.75"
+          memory: 1024M
+    mem_limit: 3072m
+    cpus: 1.5
     restart: unless-stopped
 
 
