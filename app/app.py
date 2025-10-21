@@ -8,6 +8,7 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
 
 from app.adapters.analytics.clickhouse_client import create_clickhouse_client
+from app.adapters.cache.memcache import MemcachedCache
 from app.adapters.db.cassandra_engine import CassandraEngine
 from app.adapters.db.mongo_client import create_mongo_client
 from app.adapters.security.password_hasher import BcryptPasswordHasher
@@ -42,6 +43,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
     app.state.mongo_db = app.state.mongo_client[get_settings().mongo_dbname]
     app.state.redis = Redis.from_url(
         get_settings().redis_app_dsn, encoding="utf-8", decode_responses=True
+    )
+    app.state.memcache = MemcachedCache(
+        host=get_settings().memcached_host, port=get_settings().memcached_port
     )
     app.state.cassandra_engine = CassandraEngine()
     app.state.clickhouse = await create_clickhouse_client()

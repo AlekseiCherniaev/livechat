@@ -8,6 +8,7 @@ from redis.asyncio import Redis
 from starlette.websockets import WebSocket
 
 from app.adapters.analytics.analytics import ClickHouseAnalyticsRepository
+from app.adapters.cache.memcache import MemcachedCache
 from app.adapters.connection.redis_connection import RedisConnectionPort
 from app.adapters.db.cassandra_engine import CassandraEngine
 from app.adapters.db.mongo_trans_manager import MongoTransactionManager
@@ -26,6 +27,7 @@ from app.adapters.notification_sender.websocket_sender import (
     WebSocketNotificationSender,
 )
 from app.domain.ports.analytics import AnalyticsPort
+from app.domain.ports.cache import CachePort
 from app.domain.ports.connection import ConnectionPort
 from app.domain.ports.notification_sender import NotificationSenderPort
 from app.domain.ports.password_hasher import PasswordHasherPort
@@ -57,6 +59,10 @@ def get_mongo_db(request: Request) -> AsyncDatabase[Any]:
 
 def get_redis(request: Request) -> Redis:
     return request.app.state.redis  # type: ignore
+
+
+def get_memcache(request: Request) -> MemcachedCache:
+    return request.app.state.memcache  # type: ignore
 
 
 def get_cassandra_engine(request: Request) -> CassandraEngine:
@@ -196,6 +202,7 @@ def get_user_service(
     outbox_repo: OutboxRepository = Depends(get_outbox_repo),
     password_hasher: PasswordHasherPort = Depends(get_password_hasher),
     connection_port: ConnectionPort = Depends(get_connection),
+    cache_port: CachePort = Depends(get_memcache),
     transaction_manager: TransactionManager = Depends(get_transaction_manager),
 ) -> UserService:
     return UserService(
@@ -205,6 +212,7 @@ def get_user_service(
         outbox_repo=outbox_repo,
         password_hasher_port=password_hasher,
         connection_port=connection_port,
+        cache_port=cache_port,
         transaction_manager=transaction_manager,
     )
 
