@@ -14,8 +14,10 @@ from redis.asyncio import Redis
 from starlette.datastructures import State
 from testcontainers.cassandra import CassandraContainer
 from testcontainers.clickhouse import ClickHouseContainer
+from testcontainers.core.container import DockerContainer
 from testcontainers.mongodb import MongoDbContainer
 from testcontainers.redis import RedisContainer
+from pymemcache.client.base import Client as MemcacheClient
 
 from app.adapters.db.models.cassandra.message import (
     MessageByUserModel,
@@ -117,6 +119,26 @@ def clickhouse_container():
         }
 
 
+@fixture(scope="session")
+def memcached_container():
+    with DockerContainer("memcached:latest") as container:
+        container.with_exposed_ports(11211)
+        container.start()
+        host = container.get_container_host_ip()
+        port = container.get_exposed_port(11211)
+        yield {"host": host, "port": int(port)}
+
+
+# ✅ NEW: Memcached client fixture
+@fixture(scope="function")
+async def memcached_client(memcached_container):
+    host = memcached_container["host"]
+    port = memcached_container["port"]
+    client = MemcacheClient((host, port))
+    yield client
+    client.close()
+
+
 @fixture
 def override_settings(
     redis_container,
@@ -124,6 +146,7 @@ def override_settings(
     cassandra_container,
     cassandra_session,
     clickhouse_container,
+    memcached_container,
     monkeypatch,
 ):
     test_settings = Settings(
@@ -141,6 +164,8 @@ def override_settings(
         clickhouse_tcp_port=clickhouse_container["port"],
         clickhouse_user=clickhouse_container["username"],
         clickhouse_password=clickhouse_container["password"],
+        memcached_host=memcached_container["host"],
+        memcached_port=memcached_container["port"],
     )
     monkeypatch.setattr(settings_module, "Settings", lambda: test_settings)
 
