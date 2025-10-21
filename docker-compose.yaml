@@ -1,13 +1,13 @@
 services:
   api:
     build: .
-    container_name: api
-    ports:
-      - "8000:8000"
+    container_name: chat-api
+    expose:
+      - 8000
     env_file:
       - .env
     networks:
-      - common_network
+      - chat_common_network
     depends_on:
       clickhouse:
         condition: service_healthy
@@ -27,13 +27,13 @@ services:
 
   celery-worker:
     build: .
-    container_name: celery-worker
+    container_name: chat-celery-worker
     command: /app/.venv/bin/celery -A app.adapters.jobs.celery_app.celery_app worker --loglevel=info
     user: "1000:1000"
     env_file:
       - .env
     networks:
-      - common_network
+      - chat_common_network
     depends_on:
       clickhouse:
         condition: service_healthy
@@ -47,12 +47,12 @@ services:
 
   celery-beat:
     build: .
-    container_name: celery-beat
+    container_name: chat-celery-beat
     command: /app/.venv/bin/celery -A app.adapters.jobs.celery_app.celery_app beat --loglevel=info
     env_file:
       - .env
     networks:
-      - common_network
+      - chat_common_network
     depends_on:
       clickhouse:
         condition: service_healthy
@@ -66,15 +66,15 @@ services:
 
   mongodb:
     image: mongo:7.0
-    container_name: mongodb
+    container_name: chat-mongodb
     command: [
       "--replSet", "rs0",
       "--bind_ip_all",
       "--auth",
       "--keyFile", "/data/keyfile.pem"
     ]
-    ports:
-      - "27017:27017"
+    expose:
+      - 27017
     environment:
       MONGO_INITDB_DATABASE: ${MONGO_DBNAME}
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
@@ -83,7 +83,7 @@ services:
       - mongodb_data:/data/db
       - ./docker/mongo/keyfile.pem:/data/keyfile.pem:ro
     networks:
-      - common_network
+      - chat_common_network
     healthcheck:
       test: [ "CMD", "mongosh", "--username", "${MONGO_INITDB_ROOT_USERNAME}", "--password", "${MONGO_INITDB_ROOT_PASSWORD}", "--eval", "db.adminCommand('ping')" ]
       interval: 30s
@@ -103,7 +103,7 @@ services:
 
   mongodb-init:
     image: mongo:7.0
-    container_name: mongodb-init
+    container_name: chat-mongodb-init
     depends_on:
       mongodb:
         condition: service_healthy
@@ -126,21 +126,21 @@ services:
         '
       "
     networks:
-      - common_network
+      - chat_common_network
     restart: "no"
 
   memcached:
     image: memcached:latest
-    container_name: memcached
-    ports:
-      - "11211:11211"
+    container_name: chat-memcached
+    expose:
+      - 11211
     command:
       - memcached
       - -m 64
       - -v
       - -I 1m
     networks:
-      - common_network
+      - chat_common_network
     deploy:
       resources:
         limits:
@@ -155,14 +155,14 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: redis
+    container_name: chat-redis
     command: [ "redis-server", "--appendonly", "yes" ]
-    ports:
-      - "6379:6379"
+    expose:
+      - 6379
     volumes:
       - redis-data:/data
     networks:
-      - common_network
+      - chat_common_network
     healthcheck:
       test: [ "CMD", "redis-cli", "ping" ]
       interval: 30s
@@ -182,9 +182,9 @@ services:
 
   cassandra:
     image: cassandra:4.1
-    container_name: cassandra
-    ports:
-      - "9042:9042"
+    container_name: chat-cassandra
+    expose:
+      - 9042
     environment:
       CASSANDRA_CLUSTER_NAME: "chat-cluster"
       CASSANDRA_USER: ${CASSANDRA_USER}
@@ -194,7 +194,7 @@ services:
     volumes:
       - cassandra_data:/var/lib/cassandra
     networks:
-      - common_network
+      - chat_common_network
     healthcheck:
       test: [ "CMD", "cqlsh", "-u", "${CASSANDRA_USER}", "-p", "${CASSANDRA_PASSWORD}", "-e", "describe keyspaces;" ]
       interval: 40s
@@ -214,22 +214,22 @@ services:
 
   cassandra-migrations:
     build: .
-    container_name: cassandra_migrations
+    container_name: chat-cassandra-migrations
     command: [ "/app/.venv/bin/python", "/app/cassandra_migrations/run_migrations.py" ]
     env_file:
       - .env
     networks:
-      - common_network
+      - chat_common_network
     depends_on:
       cassandra:
         condition: service_healthy
 
   clickhouse:
     image: clickhouse/clickhouse-server:24.8.4
-    container_name: clickhouse
-    ports:
-      - "8123:8123"
-      - "9000:9000"
+    container_name: chat-clickhouse
+    expose:
+      - 8123
+      - 9000
     environment:
       CLICKHOUSE_DB: ${CLICKHOUSE_DB}
       CLICKHOUSE_USER: ${CLICKHOUSE_USER}
@@ -238,7 +238,7 @@ services:
     volumes:
       - clickhouse_data:/var/lib/clickhouse
     networks:
-      - common_network
+      - chat_common_network
     healthcheck:
         test: ["CMD-SHELL", "clickhouse-client --query 'SELECT 1' || exit 1"]
         interval: 30s
@@ -258,9 +258,9 @@ services:
 
 
 networks:
-  common_network:
-    name: common_network
-    driver: bridge
+  chat_common_network:
+    external: true
+    name: chat_common_network
 
 volumes:
   redis-data:
