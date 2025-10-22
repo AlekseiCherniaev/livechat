@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from cassandra.cqlengine import columns
@@ -18,7 +18,7 @@ class MessageModel(Model):  # type: ignore[misc]
     user_id = columns.UUID()
     content = columns.Text()
     edited = columns.Boolean(default=False)
-    updated_at = columns.DateTime(default=lambda: datetime.now(timezone.utc))
+    updated_at = columns.DateTime(default=lambda: datetime.now(UTC))
     id = columns.UUID(default=uuid4)
 
     def to_entity(self) -> Message:
@@ -56,7 +56,7 @@ class MessageByUserModel(Model):  # type: ignore[misc]
     room_id = columns.UUID()
     content = columns.Text()
     edited = columns.Boolean(default=False)
-    updated_at = columns.DateTime(default=lambda: datetime.now(timezone.utc))
+    updated_at = columns.DateTime(default=lambda: datetime.now(UTC))
 
     def to_entity(self) -> Message:
         return Message(
@@ -92,7 +92,7 @@ class MessageByIdModel(Model):  # type: ignore[misc]
     content = columns.Text()
     created_at = columns.DateTime()
     edited = columns.Boolean(default=False)
-    updated_at = columns.DateTime(default=lambda: datetime.now(timezone.utc))
+    updated_at = columns.DateTime(default=lambda: datetime.now(UTC))
 
     def to_entity(self) -> Message:
         return Message(
@@ -130,7 +130,7 @@ class MessageGlobalModel(Model):  # type: ignore[misc]
     user_id = columns.UUID()
     content = columns.Text()
     edited = columns.Boolean(default=False)
-    updated_at = columns.DateTime(default=lambda: datetime.now(timezone.utc))
+    updated_at = columns.DateTime(default=lambda: datetime.now(UTC))
 
     def to_entity(self) -> Message:
         return Message(

@@ -1,6 +1,7 @@
 import asyncio
-from datetime import datetime, timezone
-from typing import Any, TypeVar, Callable, Awaitable
+from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime
+from typing import Any, TypeVar
 from uuid import UUID
 
 import structlog
@@ -23,7 +24,7 @@ from app.adapters.jobs.outbox_repair import OutboxRepairJob
 from app.adapters.notification_sender.websocket_sender import (
     WebSocketNotificationSender,
 )
-from app.core.constants import OutboxMessageType, NotificationType, AnalyticsEventType
+from app.core.constants import AnalyticsEventType, NotificationType, OutboxMessageType
 from app.core.settings import get_settings
 from app.domain.entities.analytics_event import AnalyticsEvent
 from app.domain.entities.notification import Notification
@@ -193,7 +194,7 @@ async def process_outbox() -> None:
                         task_logger.info("Analytics event published successfully")
 
                     await outbox_repo.mark_sent(
-                        outbox_id=outbox.id, sent_at=datetime.now(timezone.utc)
+                        outbox_id=outbox.id, sent_at=datetime.now(UTC)
                     )
                     task_logger.info("Outbox marked as SENT")
                 except Exception as e:

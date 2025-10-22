@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -7,8 +7,8 @@ from pymongo.asynchronous.client_session import AsyncClientSession
 from pymongo.asynchronous.database import AsyncDatabase
 
 from app.adapters.db.models.mongo.room import (
-    room_to_document,
     document_to_room,
+    room_to_document,
 )
 from app.domain.entities.room import Room
 
@@ -74,7 +74,7 @@ class MongoRoomRepository:
             {"_id": str(room_id)},
             {
                 "$inc": {"participants_count": 1},
-                "$set": {"updated_at": datetime.now(timezone.utc)},
+                "$set": {"updated_at": datetime.now(UTC)},
             },
             session=db_session,
         )
@@ -90,7 +90,7 @@ class MongoRoomRepository:
                         "participants_count": {
                             "$max": [{"$subtract": ["$participants_count", 1]}, 0]
                         },
-                        "updated_at": datetime.now(timezone.utc),
+                        "updated_at": datetime.now(UTC),
                     }
                 }
             ],

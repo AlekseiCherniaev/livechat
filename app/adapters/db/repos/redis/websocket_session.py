@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -7,8 +7,8 @@ import orjson
 from redis.asyncio import Redis
 
 from app.adapters.db.models.redis.websocker_session import (
-    session_to_dict,
     dict_to_session,
+    session_to_dict,
 )
 from app.core.settings import get_settings
 from app.domain.entities.websocket_session import WebSocketSession
@@ -85,5 +85,5 @@ class RedisWebSocketSessionRepository:
         session = await self.get_by_id(session_id)
         if not session:
             return
-        session.last_ping_at = datetime.now(timezone.utc)
+        session.last_ping_at = datetime.now(UTC)
         await self.save(session=session)

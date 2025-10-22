@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -22,6 +22,6 @@ def document_to_user(doc: dict[str, Any]) -> User:
         username=doc["username"],
         hashed_password=doc["hashed_password"],
         last_active=doc.get("last_active"),
-        created_at=doc.get("created_at", datetime.now(timezone.utc)),
-        updated_at=doc.get("updated_at", datetime.now(timezone.utc)),
+        created_at=doc.get("created_at", datetime.now(UTC)),
+        updated_at=doc.get("updated_at", datetime.now(UTC)),
     )

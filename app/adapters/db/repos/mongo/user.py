@@ -1,5 +1,6 @@
-from datetime import datetime, timezone
-from typing import Any, Collection
+from collections.abc import Collection
+from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 from pymongo.asynchronous.client_session import AsyncClientSession
@@ -46,7 +47,7 @@ class MongoUserRepository:
     async def update_last_active(
         self, user_id: UUID, db_session: AsyncClientSession | None = None
     ) -> None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         await self._col.update_one(
             {"_id": str(user_id)},
             {"$set": {"last_active_at": now, "updated_at": now}},

@@ -1,8 +1,8 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from app.core.constants import OutboxStatus, OutboxMessageType
+from app.core.constants import OutboxMessageType, OutboxStatus
 from app.domain.entities.outbox import Outbox
 
 
@@ -32,5 +32,5 @@ def document_to_outbox(doc: dict[str, Any]) -> Outbox:
         max_retries=doc.get("max_retries", 5),
         sent_at=doc.get("sent_at"),
         last_error=doc.get("last_error"),
-        created_at=doc.get("created_at", datetime.now(timezone.utc)),
+        created_at=doc.get("created_at", datetime.now(UTC)),
     )

@@ -6,7 +6,7 @@ from pymongo import ASCENDING
 from pymongo.asynchronous.client_session import AsyncClientSession
 from pymongo.asynchronous.database import AsyncDatabase
 
-from app.adapters.db.models.mongo.outbox import outbox_to_document, document_to_outbox
+from app.adapters.db.models.mongo.outbox import document_to_outbox, outbox_to_document
 from app.core.constants import OutboxStatus
 from app.domain.entities.outbox import Outbox
 

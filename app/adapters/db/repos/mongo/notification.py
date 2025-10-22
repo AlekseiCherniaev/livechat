@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -74,7 +74,7 @@ class MongoNotificationRepository:
     ) -> None:
         await self._col.update_one(
             {"_id": str(notification_id)},
-            {"$set": {"read": True, "updated_at": datetime.now(timezone.utc)}},
+            {"$set": {"read": True, "updated_at": datetime.now(UTC)}},
             session=db_session,
         )
 
@@ -83,6 +83,6 @@ class MongoNotificationRepository:
     ) -> None:
         await self._col.update_many(
             {"user_id": str(user_id), "read": False},
-            {"$set": {"read": True, "updated_at": datetime.now(timezone.utc)}},
+            {"$set": {"read": True, "updated_at": datetime.now(UTC)}},
             session=db_session,
         )

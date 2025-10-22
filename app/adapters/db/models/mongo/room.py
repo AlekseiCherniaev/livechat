@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -26,6 +26,6 @@ def document_to_room(doc: dict[str, Any]) -> Room:
         created_by=UUID(doc["created_by"]),
         participants_count=doc["participants_count"],
         description=doc["description"],
-        created_at=doc.get("created_at", datetime.now(timezone.utc)),
-        updated_at=doc.get("updated_at", datetime.now(timezone.utc)),
+        created_at=doc.get("created_at", datetime.now(UTC)),
+        updated_at=doc.get("updated_at", datetime.now(UTC)),
     )

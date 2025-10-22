@@ -4,10 +4,10 @@ from typing import Any
 from uuid import UUID
 
 from app.adapters.db.models.cassandra.message import (
-    MessageModel,
-    MessageByUserModel,
     MessageByIdModel,
+    MessageByUserModel,
     MessageGlobalModel,
+    MessageModel,
 )
 from app.domain.entities.message import Message
 

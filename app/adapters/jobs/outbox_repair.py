@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import structlog
 
@@ -34,7 +34,7 @@ class OutboxRepairJob:
         self._delay_between_batches = delay_between_batches
 
     async def run_once(self) -> None:
-        since = datetime.now(timezone.utc) - timedelta(minutes=self._window_minutes)
+        since = datetime.now(UTC) - timedelta(minutes=self._window_minutes)
         logger.bind(since=str(since)).info("Starting OutboxRepairJob")
 
         repaired = 0

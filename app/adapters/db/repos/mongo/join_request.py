@@ -1,12 +1,13 @@
-from typing import Any, Sequence, Mapping
+from collections.abc import Mapping, Sequence
+from typing import Any
 from uuid import UUID
 
 from pymongo.asynchronous.client_session import AsyncClientSession
 from pymongo.asynchronous.database import AsyncDatabase
 
 from app.adapters.db.models.mongo.join_request import (
-    join_request_to_document,
     document_to_join_request,
+    join_request_to_document,
 )
 from app.adapters.db.models.mongo.room import document_to_room
 from app.adapters.db.models.mongo.user import document_to_user

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -20,5 +20,5 @@ def document_to_room_membership(doc: dict[str, Any]) -> RoomMembership:
         room_id=UUID(doc["room_id"]),
         user_id=UUID(doc["user_id"]),
         role=RoomRole(doc["role"]),
-        joined_at=doc.get("joined_at", datetime.now(timezone.utc)),
+        joined_at=doc.get("joined_at", datetime.now(UTC)),
     )

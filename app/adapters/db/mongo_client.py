@@ -1,8 +1,7 @@
 from typing import Any
 
 import structlog
-from pymongo import ASCENDING
-from pymongo import AsyncMongoClient
+from pymongo import ASCENDING, AsyncMongoClient
 from pymongo.asynchronous.database import AsyncDatabase
 
 from app.core.settings import get_settings

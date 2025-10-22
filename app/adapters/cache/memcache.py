@@ -36,7 +36,7 @@ class MemcachedCache:
             logger.bind(key=key).debug("Memcache set")
         except Exception as e:
             logger.bind(e=str(e)).warning("Memcache set error")
-            return None
+            return
 
     async def delete(self, key: str) -> None:
         try:
@@ -44,7 +44,7 @@ class MemcachedCache:
             logger.bind(key=key).debug("Memcache delete")
         except Exception as e:
             logger.bind(e=str(e)).warning("Memcache delete error")
-            return None
+            return
 
     async def exists(self, key: str) -> bool:
         try:

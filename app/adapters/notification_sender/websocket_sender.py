@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.core.constants import BroadcastEventType
 from app.domain.entities.event_payload import EventPayload
@@ -18,7 +18,7 @@ class WebSocketNotificationSender:
         payload.update(notification.payload)
         event = EventPayload(
             payload=payload,
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
         )
         await self._conn.send_event_to_user(
             user_id=notification.user_id,

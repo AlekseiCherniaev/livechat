@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -21,5 +21,5 @@ def document_to_join_request(doc: dict[str, Any]) -> JoinRequest:
         room_id=UUID(doc["room_id"]),
         user_id=UUID(doc["user_id"]),
         message=doc.get("message"),
-        created_at=doc.get("created_at", datetime.now(timezone.utc)),
+        created_at=doc.get("created_at", datetime.now(UTC)),
     )

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -27,6 +27,6 @@ def document_to_notification(doc: dict[str, Any]) -> Notification:
         payload=doc.get("payload", {}),
         read=doc.get("read", False),
         source_id=doc.get("source_id") and UUID(doc.get("source_id")),
-        created_at=doc.get("created_at", datetime.now(timezone.utc)),
-        updated_at=doc.get("updated_at", datetime.now(timezone.utc)),
+        created_at=doc.get("created_at", datetime.now(UTC)),
+        updated_at=doc.get("updated_at", datetime.now(UTC)),
     )
