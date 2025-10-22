@@ -1,7 +1,7 @@
 from typing import Any
 
 from clickhouse_connect.driver.asyncclient import AsyncClient
-from fastapi import Request, Depends
+from fastapi import Depends, Request
 from pymongo import AsyncMongoClient
 from pymongo.asynchronous.database import AsyncDatabase
 from redis.asyncio import Redis

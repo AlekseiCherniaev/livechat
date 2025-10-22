@@ -1,10 +1,10 @@
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, WebSocket, Depends, Response, status
+from fastapi import APIRouter, Depends, Response, WebSocket, status
 
 from app.api.dependencies import get_current_user_id, get_websocket_room_id
 from app.api.di import get_websocket_service, get_websocket_service_from_websocket
@@ -33,8 +33,8 @@ async def websocket_stream(
     session = WebSocketSession(
         user_id=user_id,
         room_id=room_id,
-        connected_at=datetime.now(timezone.utc),
-        last_ping_at=datetime.now(timezone.utc),
+        connected_at=datetime.now(UTC),
+        last_ping_at=datetime.now(UTC),
         ip_address=websocket.client.host if websocket.client else "unknown",
     )
     stop_event = asyncio.Event()

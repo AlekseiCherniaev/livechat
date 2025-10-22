@@ -2,7 +2,7 @@ from dataclasses import asdict
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, Response, status, Query
+from fastapi import APIRouter, Depends, Query, Response, status
 
 from app.api.dependencies import get_current_user_id
 from app.api.di import get_notification_service

@@ -1,7 +1,7 @@
 import structlog
-from fastapi import APIRouter, Depends, Response, status, Request
+from fastapi import APIRouter, Depends, Request, Response, status
 
-from app.api.dependencies import set_session_cookie, get_current_user
+from app.api.dependencies import get_current_user, set_session_cookie
 from app.api.di import get_user_service
 from app.api.schemas.user import UserAuth, UserPublic
 from app.domain.dtos.user import UserAuthDTO

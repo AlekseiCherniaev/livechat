@@ -2,7 +2,7 @@ from dataclasses import asdict
 from uuid import UUID
 
 import structlog
-from fastapi import Response, Request, Depends
+from fastapi import Depends, Request, Response
 from starlette.websockets import WebSocket
 
 from app.api.di import get_user_service

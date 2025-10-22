@@ -1,12 +1,12 @@
-from fastapi import Request, FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from starlette import status
 
 from app.domain.exceptions.analytics import RoomStatsNotFound, UserActivityNotFound
 from app.domain.exceptions.join_request import (
-    JoinRequestNotFound,
     JoinRequestAlreadyExists,
     JoinRequestAlreadyHandled,
+    JoinRequestNotFound,
 )
 from app.domain.exceptions.message import (
     MessageNotFound,
@@ -17,20 +17,20 @@ from app.domain.exceptions.notification import (
     NotificationPermissionError,
 )
 from app.domain.exceptions.room import (
-    RoomNotFound,
-    RoomAlreadyExists,
     NoChangesDetected,
+    RoomAlreadyExists,
+    RoomNotFound,
     RoomPermissionError,
 )
 from app.domain.exceptions.user import (
     UserAlreadyExists,
-    UserNotFound,
     UserInvalidCredentials,
+    UserNotFound,
 )
 from app.domain.exceptions.user_session import (
-    SessionNotFound,
-    NoSessionCookie,
     InvalidSession,
+    NoSessionCookie,
+    SessionNotFound,
 )
 from app.domain.exceptions.websocket_session import (
     WebSocketSessionNotFound,

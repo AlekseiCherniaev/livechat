@@ -2,16 +2,16 @@ from dataclasses import asdict
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, Query, status, Response
+from fastapi import APIRouter, Depends, Query, Response, status
 
 from app.api.dependencies import get_current_user_id
 from app.api.di import get_room_service
 from app.api.schemas.room import (
-    RoomCreate,
-    RoomUpdate,
-    RoomPublic,
-    SendJoinRequest,
     JoinRequestPublic,
+    RoomCreate,
+    RoomPublic,
+    RoomUpdate,
+    SendJoinRequest,
 )
 from app.api.schemas.user import UserPublic
 from app.domain.services.room import RoomService

@@ -113,7 +113,7 @@ async def _handle_client_messages(
 
             if message_type == "PONG":
                 continue
-            elif message_type == BroadcastEventType.USER_TYPING.value:
+            if message_type == BroadcastEventType.USER_TYPING.value:
                 await ws_service.typing_indicator(
                     room_id=room_id,
                     user_id=user_id,

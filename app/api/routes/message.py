@@ -3,14 +3,14 @@ from datetime import datetime
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, Query, status, Response
+from fastapi import APIRouter, Depends, Query, Response, status
 
 from app.api.dependencies import get_current_user_id
 from app.api.di import get_message_service
 from app.api.schemas.message import (
-    SendMessageRequest,
     EditMessageRequest,
     MessagePublic,
+    SendMessageRequest,
 )
 from app.domain.services.message import MessageService
 
