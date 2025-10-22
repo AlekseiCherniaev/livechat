@@ -11,9 +11,9 @@ from app.domain.exceptions.join_request import (
     JoinRequestAlreadyExists,
 )
 from app.domain.exceptions.room import (
+    NoChangesDetected,
     RoomAlreadyExists,
     RoomNotFound,
-    NoChangesDetected,
 )
 from app.domain.exceptions.user import UserNotFound
 from app.domain.services.room import RoomService

@@ -1,7 +1,8 @@
-from cassandra.cluster import Cluster
-from cassandra.auth import PlainTextAuthProvider
-import os
 import glob
+import os
+
+from cassandra.auth import PlainTextAuthProvider
+from cassandra.cluster import Cluster
 
 CONTACT_POINT = os.getenv("CASSANDRA_CONTACT_POINT", "cassandra")
 USER = os.getenv("CASSANDRA_USER")

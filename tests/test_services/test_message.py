@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
@@ -69,7 +69,7 @@ class TestMessageService:
             room_id=room_id,
             user_id=user_id,
             content="old",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
 
         await service.edit_message(msg_id, user_id, "new content")
@@ -99,7 +99,7 @@ class TestMessageService:
             room_id=uuid4(),
             user_id=uuid4(),
             content="hello",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         user_repo.get_by_id.return_value = AsyncMock(username="john")
 
@@ -117,7 +117,7 @@ class TestMessageService:
             room_id=room_id,
             user_id=user_id,
             content="bye",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         user_repo.get_by_id.return_value = AsyncMock(username="john")
         message_repo.get_by_id.return_value = message
@@ -149,7 +149,7 @@ class TestMessageService:
             room_id=uuid4(),
             user_id=uuid4(),
             content="bye",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         user_repo.get_by_id.return_value = AsyncMock(username="john")
 
@@ -172,7 +172,7 @@ class TestMessageService:
                 room_id=room_id,
                 user_id=user_id,
                 content="hello",
-                created_at=datetime.now(timezone.utc),
+                created_at=datetime.now(UTC),
             )
         ]
 

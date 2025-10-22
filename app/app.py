@@ -1,5 +1,6 @@
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator, Any
+from typing import Any
 
 import structlog
 from fastapi import FastAPI
@@ -15,7 +16,7 @@ from app.adapters.security.password_hasher import BcryptPasswordHasher
 from app.api.exception_handler import register_exception_handlers
 from app.api.main_router import get_main_router
 from app.core.logger import prepare_logger
-from app.core.settings import get_settings, Settings
+from app.core.settings import Settings, get_settings
 from app.core.utils import use_handler_name_as_unique_id
 
 logger = structlog.get_logger(__name__)

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
@@ -12,7 +12,7 @@ from app.domain.exceptions.user import (
     UserInvalidCredentials,
     UserNotFound,
 )
-from app.domain.exceptions.user_session import SessionNotFound, InvalidSession
+from app.domain.exceptions.user_session import InvalidSession, SessionNotFound
 from app.domain.services.user import UserService
 
 
@@ -65,7 +65,7 @@ class TestUserService:
         user_repo.get_by_username.return_value = user
         service._password_hasher.verify.return_value = True
         session_repo.save.return_value = UserSession(
-            id=uuid4(), user_id=user_id, connected_at=datetime.now(timezone.utc)
+            id=uuid4(), user_id=user_id, connected_at=datetime.now(UTC)
         )
 
         session_id = await service.login_user(
@@ -94,7 +94,7 @@ class TestUserService:
         user_id = uuid4()
         session_id = uuid4()
         session_repo.get_by_id.return_value = UserSession(
-            id=session_id, user_id=user_id, connected_at=datetime.now(timezone.utc)
+            id=session_id, user_id=user_id, connected_at=datetime.now(UTC)
         )
 
         await service.logout_user(str(session_id))
@@ -123,7 +123,7 @@ class TestUserService:
         user_id = uuid4()
         session_id = uuid4()
         session_repo.get_by_id.return_value = UserSession(
-            id=session_id, user_id=user_id, connected_at=datetime.now(timezone.utc)
+            id=session_id, user_id=user_id, connected_at=datetime.now(UTC)
         )
         user_repo.get_by_id.return_value = User(
             id=user_id, username="alice", hashed_password="x"
@@ -146,7 +146,7 @@ class TestUserService:
     ):
         session_id = uuid4()
         session_repo.get_by_id.return_value = UserSession(
-            id=session_id, user_id=uuid4(), connected_at=datetime.now(timezone.utc)
+            id=session_id, user_id=uuid4(), connected_at=datetime.now(UTC)
         )
         user_repo.get_by_id.return_value = None
         cache_port.get.return_value = None

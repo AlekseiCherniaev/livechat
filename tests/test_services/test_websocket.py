@@ -1,5 +1,5 @@
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, patch, ANY
+from datetime import UTC, datetime
+from unittest.mock import ANY, AsyncMock, patch
 from uuid import uuid4
 
 import pytest
@@ -12,7 +12,7 @@ from app.domain.services.websocket import WebSocketService
 
 
 def make_session() -> WebSocketSession:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return WebSocketSession(
         user_id=uuid4(),
         room_id=uuid4(),

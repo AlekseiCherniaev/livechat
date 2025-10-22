@@ -1,4 +1,4 @@
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 from asgi_lifespan import LifespanManager
 from asgi_lifespan._types import ASGIApp
@@ -7,7 +7,8 @@ from cassandra.cqlengine import connection
 from cassandra.cqlengine.management import sync_table
 from cassandra.query import dict_factory
 from fastapi import FastAPI
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
+from pymemcache.client.base import Client as MemcacheClient
 from pymongo import AsyncMongoClient
 from pytest_asyncio import fixture
 from redis.asyncio import Redis
@@ -17,13 +18,12 @@ from testcontainers.clickhouse import ClickHouseContainer
 from testcontainers.core.container import DockerContainer
 from testcontainers.mongodb import MongoDbContainer
 from testcontainers.redis import RedisContainer
-from pymemcache.client.base import Client as MemcacheClient
 
 from app.adapters.db.models.cassandra.message import (
-    MessageByUserModel,
-    MessageModel,
     MessageByIdModel,
+    MessageByUserModel,
     MessageGlobalModel,
+    MessageModel,
 )
 from app.api.di import get_transaction_manager
 from app.app import init_app
