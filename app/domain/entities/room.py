@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from functools import partial
-from uuid import uuid4, UUID
+from uuid import UUID, uuid4
 
 
 @dataclass
@@ -11,6 +11,6 @@ class Room:
     created_by: UUID
     participants_count: int = 0
     description: str | None = None
-    created_at: datetime = field(default_factory=partial(datetime.now, timezone.utc))
-    updated_at: datetime = field(default_factory=partial(datetime.now, timezone.utc))
+    created_at: datetime = field(default_factory=partial(datetime.now, UTC))
+    updated_at: datetime = field(default_factory=partial(datetime.now, UTC))
     id: UUID = field(default_factory=uuid4)

@@ -9,7 +9,7 @@ def use_handler_name_as_unique_id(route: APIRoute) -> str:
 
 
 def get_project_config(base_dir: Path) -> dict[str, str]:
-    with open(base_dir / "pyproject.toml", "r") as file:
+    with open(base_dir / "pyproject.toml") as file:
         config = toml.load(file).get("project", {})
         project_name = config["name"]
         project_version = config["version"]

@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from functools import partial
 from typing import Any
 from uuid import UUID, uuid4
@@ -17,5 +17,5 @@ class Outbox:
     max_retries: int = 5
     sent_at: datetime | None = None
     last_error: str | None = None
-    created_at: datetime = field(default_factory=partial(datetime.now, timezone.utc))
+    created_at: datetime = field(default_factory=partial(datetime.now, UTC))
     id: UUID = field(default_factory=uuid4)
