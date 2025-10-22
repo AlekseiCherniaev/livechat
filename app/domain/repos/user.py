@@ -1,4 +1,5 @@
-from typing import Protocol, Any, Collection
+from collections.abc import Collection
+from typing import Any, Protocol
 from uuid import UUID
 
 from app.domain.entities.user import User

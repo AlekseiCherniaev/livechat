@@ -1,4 +1,4 @@
-from typing import Protocol, Any
+from typing import Any, Protocol
 from uuid import UUID
 
 from app.domain.entities.user_session import UserSession
