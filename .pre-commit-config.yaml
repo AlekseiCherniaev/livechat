@@ -9,7 +9,7 @@ repos:
     rev: v1.9.0
     hooks:
       - id: mypy
-        args: [ --strict ]
+        args: [ --config-file=pyproject.toml ]
         exclude: "^tests/"
         language: system
   - repo: local
