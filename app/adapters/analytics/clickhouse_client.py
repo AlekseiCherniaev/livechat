@@ -36,7 +36,7 @@ async def create_clickhouse_client() -> AsyncClient:
         database="default",
     )
     await ensure_database(tmp_client, get_settings().clickhouse_db)
-    await tmp_client.close()  # type: ignore
+    await tmp_client.close()  # type:ignore[no-untyped-call]
 
     client = await clickhouse_connect.get_async_client(
         host=get_settings().clickhouse_host,

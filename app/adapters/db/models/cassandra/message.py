@@ -8,7 +8,7 @@ from app.core.settings import get_settings
 from app.domain.entities.message import Message
 
 
-class MessageModel(Model):  # type: ignore
+class MessageModel(Model):  # type: ignore[misc]
     __keyspace__ = get_settings().cassandra_keyspace
     __table_name__ = "messages"
 
@@ -45,7 +45,7 @@ class MessageModel(Model):  # type: ignore
         )
 
 
-class MessageByUserModel(Model):  # type: ignore
+class MessageByUserModel(Model):  # type: ignore[misc]
     __keyspace__ = get_settings().cassandra_keyspace
     __table_name__ = "messages_by_user"
 
@@ -82,7 +82,7 @@ class MessageByUserModel(Model):  # type: ignore
         )
 
 
-class MessageByIdModel(Model):  # type: ignore
+class MessageByIdModel(Model):  # type: ignore[misc]
     __keyspace__ = get_settings().cassandra_keyspace
     __table_name__ = "messages_by_id"
 
@@ -118,7 +118,7 @@ class MessageByIdModel(Model):  # type: ignore
         )
 
 
-class MessageGlobalModel(Model):  # type: ignore
+class MessageGlobalModel(Model):  # type: ignore[misc]
     __keyspace__ = get_settings().cassandra_keyspace
     __table_name__ = "messages_global"
 

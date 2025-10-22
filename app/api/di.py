@@ -50,27 +50,27 @@ from app.domain.services.websocket import WebSocketService
 
 
 def get_mongo_client(request: Request) -> AsyncMongoClient[Any]:
-    return request.app.state.mongo_client  # type: ignore
+    return request.app.state.mongo_client  # type: ignore[no-any-return]
 
 
 def get_mongo_db(request: Request) -> AsyncDatabase[Any]:
-    return request.app.state.mongo_db  # type: ignore
+    return request.app.state.mongo_db  # type: ignore[no-any-return]
 
 
 def get_redis(request: Request) -> Redis:
-    return request.app.state.redis  # type: ignore
+    return request.app.state.redis  # type: ignore[no-any-return]
 
 
 def get_memcache(request: Request) -> MemcachedCache:
-    return request.app.state.memcache  # type: ignore
+    return request.app.state.memcache  # type: ignore[no-any-return]
 
 
 def get_cassandra_engine(request: Request) -> CassandraEngine:
-    return request.app.state.cassandra_engine  # type: ignore
+    return request.app.state.cassandra_engine  # type: ignore[no-any-return]
 
 
 def get_clickhouse(request: Request) -> AsyncClient:
-    return request.app.state.clickhouse  # type: ignore
+    return request.app.state.clickhouse  # type: ignore[no-any-return]
 
 
 def get_analytics(
@@ -92,7 +92,7 @@ def get_notification_sender(
 
 
 def get_password_hasher(request: Request) -> PasswordHasherPort:
-    return request.app.state.bcrypt_password_hasher  # type: ignore
+    return request.app.state.bcrypt_password_hasher  # type: ignore[no-any-return]
 
 
 def get_transaction_manager(
