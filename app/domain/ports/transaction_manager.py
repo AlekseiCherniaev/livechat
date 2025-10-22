@@ -1,4 +1,5 @@
-from typing import Protocol, Callable, Any
+from collections.abc import Callable
+from typing import Any, Protocol
 
 
 class TransactionManager(Protocol):
