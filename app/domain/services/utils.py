@@ -3,9 +3,9 @@ from uuid import UUID
 
 from app.core.constants import (
     AnalyticsEventType,
+    NotificationType,
     OutboxMessageType,
     OutboxStatus,
-    NotificationType,
 )
 from app.domain.entities.analytics_event import AnalyticsEvent
 from app.domain.entities.notification import Notification

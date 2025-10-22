@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -14,7 +14,7 @@ from app.domain.exceptions.user import (
     UserInvalidCredentials,
     UserNotFound,
 )
-from app.domain.exceptions.user_session import SessionNotFound, InvalidSession
+from app.domain.exceptions.user_session import InvalidSession, SessionNotFound
 from app.domain.ports.cache import CachePort
 from app.domain.ports.connection import ConnectionPort
 from app.domain.ports.password_hasher import PasswordHasherPort
@@ -87,9 +87,7 @@ class UserService:
             raise UserInvalidCredentials
 
         async def _txn(db_session: Any) -> UUID:
-            session = UserSession(
-                user_id=user.id, connected_at=datetime.now(timezone.utc)
-            )
+            session = UserSession(user_id=user.id, connected_at=datetime.now(UTC))
             await self._session_repo.save(session=session, db_session=db_session)
             # in case Mongo commit fails after this step, a session may remain in Redis,
             # but it will expire automatically (TTL) and is never returned to the user

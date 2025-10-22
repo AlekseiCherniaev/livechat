@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -9,7 +9,7 @@ from app.domain.entities.event_payload import EventPayload
 from app.domain.entities.websocket_session import WebSocketSession
 from app.domain.exceptions.room import RoomNotFound
 from app.domain.exceptions.user import UserNotFound
-from app.domain.exceptions.user_session import SessionNotFound, InvalidSession
+from app.domain.exceptions.user_session import InvalidSession, SessionNotFound
 from app.domain.exceptions.websocket_session import (
     WebSocketSessionNotFound,
     WebSocketSessionPermissionError,
@@ -84,7 +84,7 @@ class WebSocketService:
                         "user_id": str(session.user_id),
                         "room_id": str(existing_session.room_id),
                     },
-                    timestamp=datetime.now(timezone.utc).isoformat(),
+                    timestamp=datetime.now(UTC).isoformat(),
                 )
                 await self._conn.broadcast_event(
                     room_id=existing_session.room_id,
@@ -97,7 +97,7 @@ class WebSocketService:
         )
         event = EventPayload(
             payload={"user_id": str(session.user_id), "room_id": str(session.room_id)},
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
         )
         await self._conn.broadcast_event(
             room_id=session.room_id,
@@ -138,7 +138,7 @@ class WebSocketService:
         )
         event = EventPayload(
             payload={"user_id": str(session.user_id), "room_id": str(session.room_id)},
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
         )
         await self._conn.broadcast_event(
             room_id=session.room_id,
@@ -165,7 +165,7 @@ class WebSocketService:
                 "is_typing": str(is_typing),
                 "room_id": str(room_id),
             },
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
         )
         await self._conn.broadcast_event(
             room_id=room_id,

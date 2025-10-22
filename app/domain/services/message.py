@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -8,7 +8,7 @@ from app.core.constants import (
     AnalyticsEventType,
     BroadcastEventType,
 )
-from app.domain.dtos.message import message_to_dto, MessagePublicDTO
+from app.domain.dtos.message import MessagePublicDTO, message_to_dto
 from app.domain.entities.event_payload import EventPayload
 from app.domain.entities.message import Message
 from app.domain.entities.user import User
@@ -69,7 +69,7 @@ class MessageService:
                 "user_id": str(user.id),
                 "username": user.username,
             },
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
         )
 
     async def send_message(
@@ -128,7 +128,7 @@ class MessageService:
         async def _txn(db_session: Any) -> Message:
             message.content = new_content
             message.edited = True
-            message.updated_at = datetime.now(timezone.utc)
+            message.updated_at = datetime.now(UTC)
             await self._message_repo.save(message=message, db_session=db_session)
 
             await create_outbox_analytics_event(
