@@ -23,18 +23,18 @@ logger = structlog.get_logger(__name__)
 
 
 def get_app_config(settings: Settings) -> dict[Any, Any]:
-    return dict(
-        title=settings.project_name,
-        description=settings.project_description,
-        version=settings.project_version,
-        docs_url=None,
-        redoc_url=None,
-        debug=settings.fast_api_debug,
-        openapi_url="/api/internal/openapi.json",
-        swagger_ui_oauth2_redirect_url="/api/internal/docs/oauth2-redirect",
-        generate_unique_id_function=use_handler_name_as_unique_id,
-        lifespan=lifespan,
-    )
+    return {
+        "title": settings.project_name,
+        "description": settings.project_description,
+        "version": settings.project_version,
+        "docs_url": None,
+        "redoc_url": None,
+        "debug": settings.fast_api_debug,
+        "openapi_url": "/api/internal/openapi.json",
+        "swagger_ui_oauth2_redirect_url": "/api/internal/docs/oauth2-redirect",
+        "generate_unique_id_function": use_handler_name_as_unique_id,
+        "lifespan": lifespan,
+    }
 
 
 @asynccontextmanager
