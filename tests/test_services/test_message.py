@@ -37,11 +37,9 @@ class TestMessageService:
         room_id = uuid4()
         user_repo.get_by_id.return_value = AsyncMock(username="john")
 
-        async def save_message(message, db_session):
-            message.id = uuid4()
-            return message
-
-        message_repo.save.side_effect = save_message
+        test_message = Message(room_id=room_id, user_id=user_id, content="hi")
+        test_message.id = uuid4()
+        message_repo.save.return_value = test_message
 
         await service.send_message(room_id=room_id, user_id=user_id, content="hi")
 

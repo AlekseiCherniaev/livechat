@@ -26,8 +26,7 @@ def room_repo():
 
 @fixture
 def ws_session_repo():
-    repo = AsyncMock(spec=WebSocketSessionRepository)
-    return repo
+    return AsyncMock(spec=WebSocketSessionRepository)
 
 
 @fixture

@@ -9,6 +9,7 @@ from app.domain.entities.join_request import JoinRequest
 from app.domain.entities.room import Room
 from app.domain.exceptions.join_request import (
     JoinRequestAlreadyExists,
+    JoinRequestNotFound,
 )
 from app.domain.exceptions.room import (
     NoChangesDetected,
@@ -172,9 +173,7 @@ class TestRoomService:
         result = await service.list_rooms_for_user(uuid4())
         assert len(result) == 2
 
-    async def test_request_join_public_room(
-        self, service, room_repo, user_repo, tm, outbox_repo, membership_repo
-    ):
+    async def test_request_join_public_room(self, room_repo, user_repo):
         rid, uid = uuid4(), uuid4()
         room = Room(id=rid, name="Pub", is_public=True, created_by=uuid4())
         user = type("User", (), {"id": uid, "username": "john"})
@@ -222,7 +221,7 @@ class TestRoomService:
 
     async def test_handle_join_request_not_found(self, service, join_repo):
         join_repo.get_by_id.return_value = None
-        with pytest.raises(Exception):
+        with pytest.raises(JoinRequestNotFound):
             await service.handle_join_request(uuid4(), uuid4(), accept=True)
 
     async def test_handle_join_request_room_not_found(

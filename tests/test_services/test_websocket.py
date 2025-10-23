@@ -47,7 +47,7 @@ class TestWebSocketService:
         )
 
     async def test_connect_success(
-        self, service, ws_session_repo, user_repo, outbox_repo, connection_port, tm
+        self, service, ws_session_repo, outbox_repo, connection_port, tm
     ):
         session = make_session()
 
@@ -72,7 +72,7 @@ class TestWebSocketService:
         )
 
     async def test_disconnect_success(
-        self, service, ws_session_repo, user_repo, outbox_repo, connection_port, tm
+        self, service, ws_session_repo, outbox_repo, connection_port
     ):
         session = make_session()
         ws_session_repo.get_by_id.return_value = session
@@ -113,9 +113,7 @@ class TestWebSocketService:
         ws_session_repo.get_by_id.assert_awaited_with(session_id=session_id)
         connection_port.disconnect_user_from_room.assert_not_awaited()
 
-    async def test_update_ping_success(
-        self, service, ws_session_repo, user_repo, connection_port, tm
-    ):
+    async def test_update_ping_success(self, service, ws_session_repo, user_repo):
         session = make_session()
         ws_session_repo.get_by_id.return_value = session
 
