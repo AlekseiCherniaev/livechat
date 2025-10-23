@@ -21,7 +21,7 @@ class MongoTransactionManager:
             await session.start_transaction()
             try:
                 logger.debug("Mongo transaction started")
-                result = await func(db_session=session, *args, **kwargs)
+                result = await func(*args, db_session=session, **kwargs)
                 await session.commit_transaction()
                 logger.debug("Mongo transaction committed")
                 return result
