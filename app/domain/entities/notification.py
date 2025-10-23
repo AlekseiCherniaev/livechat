@@ -19,7 +19,7 @@ class Notification:
     id: UUID = field(default_factory=uuid4)
 
     def to_payload(self) -> dict[str, Any]:
-        data = {
+        return {
             "user_id": str(self.user_id),
             "payload": self.payload,
             "read": self.read,
@@ -27,4 +27,3 @@ class Notification:
             "id": str(self.id),
             "type": self.type.value,
         }
-        return data
