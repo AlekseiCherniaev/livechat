@@ -78,7 +78,7 @@ def cassandra_container():
         yield {"host": host, "port": int(port)}
 
 
-@fixture(scope="function")
+@fixture(scope="function", autouse=True)
 def cassandra_session(cassandra_container):
     host = cassandra_container["host"]
     port = cassandra_container["port"]
@@ -129,7 +129,6 @@ def memcached_container():
         yield {"host": host, "port": int(port)}
 
 
-# ✅ NEW: Memcached client fixture
 @fixture(scope="function")
 async def memcached_client(memcached_container):
     host = memcached_container["host"]
@@ -139,12 +138,11 @@ async def memcached_client(memcached_container):
     client.close()
 
 
-@fixture
+@fixture(autouse=True)
 def override_settings(
     redis_container,
     mongo_container,
     cassandra_container,
-    cassandra_session,
     clickhouse_container,
     memcached_container,
     monkeypatch,
@@ -172,7 +170,7 @@ def override_settings(
 
 class DummyTransactionManager:
     async def run_in_transaction(self, func, *args, **kwargs):
-        return await func(db_session=None, *args, **kwargs)
+        return await func(*args, db_session=None, **kwargs)
 
 
 def get_dummy_transaction_manager() -> TransactionManager:
@@ -180,7 +178,7 @@ def get_dummy_transaction_manager() -> TransactionManager:
 
 
 @fixture
-def configured_app(override_settings) -> FastAPI:
+def configured_app() -> FastAPI:
     settings_module.get_settings.cache_clear()
     app = init_app()
     app.dependency_overrides[get_transaction_manager] = get_dummy_transaction_manager
