@@ -116,5 +116,4 @@ class MongoOutboxRepository:
             {"dedup_key": 1, "_id": 0},
             session=db_session,
         )
-        existing = [doc["dedup_key"] async for doc in cursor]
-        return existing
+        return [doc["dedup_key"] async for doc in cursor]
