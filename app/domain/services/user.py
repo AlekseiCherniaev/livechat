@@ -114,7 +114,7 @@ class UserService:
         try:
             session_uuid = UUID(session_id)
         except ValueError:
-            raise InvalidSession
+            raise InvalidSession from None
 
         session = await self._session_repo.get_by_id(session_id=session_uuid)
         if not session:
