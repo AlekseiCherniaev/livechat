@@ -55,7 +55,7 @@ class Settings(BaseSettings):
     mongo_port: int = 27017
     mongo_dbname: str = "chat_app"
     mongo_initdb_root_username: str = "root"
-    mongo_initdb_root_password: str = "root-password"
+    mongo_initdb_root_password: str = ""
 
     @property
     def mongo_uri(self) -> str:
@@ -105,7 +105,7 @@ class Settings(BaseSettings):
     clickhouse_tcp_port: int = 8123
     clickhouse_http_port: int = 9000
     clickhouse_user: str = "clickhouse"
-    clickhouse_password: str = "clickhouse-password"
+    clickhouse_password: str = ""
     clickhouse_db: str = "analytics"
 
 
