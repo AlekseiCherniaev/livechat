@@ -3,20 +3,42 @@ repos:
     rev: v0.11.1
     hooks:
       - id: ruff
-        args: [ --fix ]
+        args: [ --fix, --exit-non-zero-on-fix ]
+        exclude: |
+          (?x)^(
+            .*migrations/.*|
+            .*\.cache/.*|
+            .*\.venv/.*|
+            venv/.*
+          )$
       - id: ruff-format
+        exclude: |
+          (?x)^(
+            .*migrations/.*|
+            .*\.cache/.*|
+            .*\.venv/.*|
+            venv/.*
+          )$
+
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.9.0
     hooks:
       - id: mypy
         args: [ --config-file=pyproject.toml ]
-        exclude: "^tests/"
+        exclude: |
+          (?x)^(
+            tests/.*|
+            .*migrations/.*|
+            .*\.venv/.*|
+            venv/.*
+          )$
         language: system
+
   - repo: local
     hooks:
-      - id: pytest
-        name: pytest
-        entry: pytest tests/test_services
+      - id: pytest-services
+        name: pytest services
+        entry: pytest tests/test_services -v
         language: system
         types: [ python ]
         pass_filenames: false
