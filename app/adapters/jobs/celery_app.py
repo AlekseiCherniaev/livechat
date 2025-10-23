@@ -1,13 +1,13 @@
 import asyncio
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncGenerator, Awaitable, Callable
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
-from typing import Any, TypeVar
+from typing import Any
 from uuid import UUID
 
 import structlog
 from celery import Celery
 from clickhouse_connect.driver.asyncclient import AsyncClient
-from pymongo import AsyncMongoClient
 from pymongo.asynchronous.database import AsyncDatabase
 from redis.asyncio import Redis
 from redis.exceptions import LockError
@@ -53,40 +53,10 @@ celery_app.conf.task_always_eager = False
 celery_app.conf.worker_pool = "solo"
 celery_app.conf.worker_concurrency = 1
 
-redis_client: Redis | None = None
-mongo_client: AsyncMongoClient[Any] | None = None
-mongo_db: AsyncDatabase[Any] | None = None
-clickhouse_client: AsyncClient | None = None
 cassandra_connection = CassandraEngine()
 
 
-def get_redis_client() -> Redis:
-    global redis_client
-    if redis_client is None:
-        redis_client = Redis.from_url(get_settings().redis_celery_backend_dsn)
-    return redis_client
-
-
-async def get_mongo_db() -> AsyncDatabase[Any]:
-    global mongo_db, mongo_client
-    if mongo_client is None:
-        mongo_client = await create_mongo_client()
-    if mongo_db is None:
-        mongo_db = mongo_client[get_settings().mongo_dbname]
-    return mongo_db
-
-
-async def get_clickhouse() -> AsyncClient:
-    global clickhouse_client
-    if clickhouse_client is None:
-        clickhouse_client = await create_clickhouse_client()
-    return clickhouse_client
-
-
-T = TypeVar("T")
-
-
-def run_async(func: Callable[..., Awaitable[T]], *args: Any, **kwargs: Any) -> T:
+def run_async[T](func: Callable[..., Awaitable[T]], *args: Any, **kwargs: Any) -> T:
     try:
         loop = asyncio.get_event_loop()
     except RuntimeError:
@@ -96,6 +66,33 @@ def run_async(func: Callable[..., Awaitable[T]], *args: Any, **kwargs: Any) -> T
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
     return loop.run_until_complete(func(*args, **kwargs))
+
+
+@asynccontextmanager
+async def get_redis_context() -> AsyncGenerator[Redis, None]:
+    redis = Redis.from_url(get_settings().redis_celery_backend_dsn)
+    try:
+        yield redis
+    finally:
+        await redis.close()
+
+
+@asynccontextmanager
+async def get_mongo_context() -> AsyncGenerator[AsyncDatabase[Any], None]:
+    client = await create_mongo_client()
+    try:
+        yield client[get_settings().mongo_dbname]
+    finally:
+        await client.close()
+
+
+@asynccontextmanager
+async def get_clickhouse_context() -> AsyncGenerator[AsyncClient, None]:
+    client = await create_clickhouse_client()
+    try:
+        yield client
+    finally:
+        await client.close()  # type:ignore[no-untyped-call]
 
 
 @celery_app.task(
@@ -118,12 +115,14 @@ def run_outbox_repair_sync() -> None:
 
 async def run_outbox_repair() -> None:
     try:
-        redis_client = get_redis_client()
-        mongo_db = await get_mongo_db()
-        async with redis_client.lock(
-            get_settings().celery_redis_repair_lock_key,
-            timeout=get_settings().celery_redis_repair_lock_key_timeout,
-            blocking=False,
+        async with (
+            get_redis_context() as redis_client,
+            get_mongo_context() as mongo_db,
+            redis_client.lock(
+                get_settings().celery_redis_repair_lock_key,
+                timeout=get_settings().celery_redis_repair_lock_key_timeout,
+                blocking=False,
+            ),
         ):
             logger.info("Acquired lock, starting OutboxRepairJob")
 
@@ -141,13 +140,15 @@ async def run_outbox_repair() -> None:
 
 async def process_outbox() -> None:
     try:
-        redis_client = get_redis_client()
-        mongo_db = await get_mongo_db()
-        clickhouse_client = await get_clickhouse()
-        async with redis_client.lock(
-            get_settings().celery_redis_worker_lock_key,
-            timeout=get_settings().celery_redis_worker_lock_key_timeout,
-            blocking=False,
+        async with (
+            get_redis_context() as redis_client,
+            get_mongo_context() as mongo_db,
+            get_clickhouse_context() as clickhouse_client,
+            redis_client.lock(
+                get_settings().celery_redis_worker_lock_key,
+                timeout=get_settings().celery_redis_worker_lock_key_timeout,
+                blocking=False,
+            ),
         ):
             logger.info("Acquired lock, starting processing outbox")
             outbox_repo = MongoOutboxRepository(db=mongo_db)
@@ -205,7 +206,9 @@ async def process_outbox() -> None:
                         )
                     else:
                         await outbox_repo.mark_pending(
-                            outbox_id=outbox.id, retry=True, last_error=str(e)
+                            outbox_id=outbox.id,
+                            retry=True,
+                            last_error=str(e),
                         )
                         task_logger.bind(e=str(e)).warning("Outbox item will retry")
 
