@@ -12,4 +12,4 @@ RUN uv sync --frozen --no-cache --no-dev
 COPY . /app
 
 # Run the application.
-CMD ["/app/.venv/bin/uvicorn", "app.app:init_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--no-use-colors"]
+CMD ["/app/.venv/bin/uvicorn", "app.app:init_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--no-use-colors", "--proxy-headers"]

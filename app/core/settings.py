@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     environment: Environment = Environment.TEST
     log_level: str = "DEBUG"
     fast_api_debug: bool = True
-    domain: str = "localhost:5173"  # "living-chat.online"
+    domain: str = "localhost"  # "living-chat.online"
     domain_https: str = f"https://{domain}"
     domain_wss: str = f"wss://{domain}"
 

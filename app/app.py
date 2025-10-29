@@ -5,7 +5,6 @@ from typing import Any
 import structlog
 from fastapi import FastAPI
 from redis.asyncio import Redis
-from starlette.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
 
 from app.adapters.analytics.clickhouse_client import create_clickhouse_client
@@ -15,6 +14,7 @@ from app.adapters.db.mongo_client import create_mongo_client
 from app.adapters.security.password_hasher import BcryptPasswordHasher
 from app.api.exception_handler import register_exception_handlers
 from app.api.main_router import get_main_router
+from app.api.middlewares import add_middlewares
 from app.core.logger import prepare_logger
 from app.core.settings import Settings, get_settings
 from app.core.utils import use_handler_name_as_unique_id
@@ -74,12 +74,5 @@ def init_app() -> FastAPI:
 
     app.include_router(get_main_router())
     register_exception_handlers(app)
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=get_settings().allowed_origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
+    add_middlewares(app)
     return app
